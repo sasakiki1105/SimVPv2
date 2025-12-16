@@ -5,6 +5,7 @@ import os
 import logging
 import subprocess
 import sys
+import platform
 from collections import defaultdict, OrderedDict
 from typing import Tuple
 
@@ -14,6 +15,9 @@ from torch import distributed as dist
 
 import openstl
 from .config_utils import Config
+import importlib.util
+from pathlib import Path
+
 
 
 def collect_env():
@@ -31,13 +35,14 @@ def collect_env():
 
         if CUDA_HOME is not None and os.path.isdir(CUDA_HOME):
             try:
-                nvcc = os.path.join(CUDA_HOME, 'bin/nvcc')
-                nvcc = subprocess.check_output(
-                    '"{}" -V | tail -n1'.format(nvcc), shell=True)
-                nvcc = nvcc.decode('utf-8').strip()
-            except subprocess.SubprocessError:
-                nvcc = 'Not Available'
-            env_info['NVCC'] = nvcc
+                nvcc = os.path.join(CUDA_HOME, 'bin', 'nvcc')
+                # Windows でも動く形にして、tail は自前で Python 側で処理
+                nvcc_out = subprocess.check_output([nvcc, '-V'])
+                lines = nvcc_out.decode('utf-8').splitlines()
+                nvcc_str = lines[-1].strip() if lines else 'Not Available'
+            except Exception:
+                nvcc_str = 'Not Available'
+            env_info['NVCC'] = nvcc_str
 
         devices = defaultdict(list)
         for k in range(torch.cuda.device_count()):
@@ -45,11 +50,19 @@ def collect_env():
         for name, devids in devices.items():
             env_info['GPU ' + ','.join(devids)] = name
 
-    gcc = subprocess.check_output('gcc --version | head -n1', shell=True)
-    gcc = gcc.decode('utf-8').strip()
-    env_info['GCC'] = gcc
+    # ★ gcc は Windows ではスキップ、その他でも失敗しても落とさない
+    try:
+        if platform.system() != "Windows":
+            gcc_out = subprocess.check_output(['gcc', '--version'])
+            gcc_line = gcc_out.decode('utf-8').splitlines()[0].strip()
+            env_info['GCC'] = gcc_line
+        else:
+            env_info['GCC'] = 'Skipped on Windows'
+    except Exception as e:
+        env_info['GCC'] = f'GCC not available: {e}'
 
     env_info['PyTorch'] = torch.__version__
+    # __config__.show() は文字列を直接返すので、そのまま入れてOK
     env_info['PyTorch compiling details'] = torch.__config__.show()
     env_info['TorchVision'] = torchvision.__version__
     env_info['OpenCV'] = cv2.__version__
@@ -57,6 +70,7 @@ def collect_env():
     env_info['openstl'] = openstl.__version__
 
     return env_info
+
 
 
 def print_log(message):
@@ -126,16 +140,40 @@ def measure_throughput(model, input_dummy):
     return Throughput
 
 
-def load_config(filename:str = None):
+def load_config(filename: str = None):
     """load and print config"""
-    print('loading config from ' + filename + ' ...')
+    print('loading config from ' + str(filename) + ' ...')
+
+    if filename is None:
+        print('warning: no filename given!')
+        return {}
+
+    cfg_path = Path(filename)
+    if not cfg_path.is_file():
+        print('warning: config file not found! ->', cfg_path)
+        return {}
+
+    # Config クラス経由だと Windows で PermissionError になるので、
+    # ここでは Python モジュールとして直接 import する
     try:
-        configfile = Config(filename=filename)
-        config = configfile._cfg_dict
-    except (FileNotFoundError, IOError):
-        config = dict()
-        print('warning: fail to load the config!')
-    return config
+        spec = importlib.util.spec_from_file_location("openstl_user_cfg", str(cfg_path))
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        # モジュール内の「先頭が '_' で始まらない名前」だけを dict に落とす
+        config = {
+            k: getattr(module, k)
+            for k in dir(module)
+            if not k.startswith("_")
+        }
+        return config
+
+    except Exception as e:
+        print('warning: fail to load the config via importlib!')
+        print('  -> exception type :', type(e).__name__)
+        print('  -> exception msg  :', e)
+        return {}
 
 
 def update_config(args, config, exclude_keys=list()):

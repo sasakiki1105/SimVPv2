@@ -242,13 +242,36 @@ def metric(pred, true, mean=None, std=None, metrics=['mae', 'mse'],
         
     pred = np.maximum(pred, clip_range[0])
     pred = np.minimum(pred, clip_range[1])
+    
     if 'ssim' in metrics:
-        ssim = 0
-        for b in range(pred.shape[0]):
-            for f in range(pred.shape[1]):
-                ssim += cal_ssim(pred[b, f].swapaxes(0, 2),
-                                 true[b, f].swapaxes(0, 2), multichannel=True)
-        eval_res['ssim'] = ssim / (pred.shape[0] * pred.shape[1])
+        # skimage が取れていない場合は SSIM をスキップ
+        if cal_ssim is None:
+            eval_res['ssim'] = None
+        else:
+            ssim = 0.0
+            cnt = 0
+            for b in range(pred.shape[0]):
+                for f in range(pred.shape[1]):
+                    # pred, true: (B, T, C, H, W) を想定
+                    frame_pred = pred[b, f]   # (C, H, W)
+                    frame_true = true[b, f]   # (C, H, W)
+
+                    # C=1 の場合は (H, W) に落として 2D グレースケールとして扱う
+                    if frame_pred.ndim == 3 and frame_pred.shape[0] == 1:
+                        frame_pred = frame_pred[0]  # (H, W)
+                        frame_true = frame_true[0]  # (H, W)
+
+                    # 新しい scikit-image では multichannel=True は非推奨。
+                    # Moving MNIST はグレースケールなので、2D 画像としてそのまま渡す。
+                    ssim += cal_ssim(
+                        frame_pred,
+                        frame_true,
+                        data_range=1.0,
+                    )
+                    cnt += 1
+
+            eval_res['ssim'] = ssim / max(cnt, 1)
+
 
     if 'psnr' in metrics:
         psnr = 0

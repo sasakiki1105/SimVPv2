@@ -21,6 +21,8 @@ class BaseExperiment(object):
     def __init__(self, args, dataloaders=None, strategy='auto'):
         """Initialize experiments (non-dist as an example)"""
         self.args = args
+        print(">>> ARGS IN EXP:", self.args)
+
         self.config = self.args.__dict__
         self.method = None
         self.args.method = self.args.method.lower()
