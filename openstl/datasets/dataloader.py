@@ -1,5 +1,8 @@
 # Copyright (c) CAIRI AI Lab. All rights reserved
 
+from .dataloader_pepapic_h5 import load_data as load_pepapic_h5
+
+
 def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist=False, **kwargs):
     cfg_dataloader = dict(
         pre_seq_length=kwargs.get('pre_seq_length', 10),
@@ -51,5 +54,10 @@ def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist
         from .dataloader_sevir import load_data
         cfg_dataloader['data_name'] = kwargs.get('data_name', 'sevir')
         return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+    elif dataname == 'pepapic_h5':
+        from .dataloader_pepapic_h5 import load_data
+        # 必要なら kwargs で stride/train_ratio/val_ratio を渡せる
+        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
     else:
         raise ValueError(f'Dataname {dataname} is unsupported')
+    

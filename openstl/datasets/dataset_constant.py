@@ -220,4 +220,15 @@ dataset_parameters = {
         'data_name': 'vil', 
         'metrics': ['mse', 'mae', 'pod', 'sucr', 'csi', 'lpips'],
     },
+    'pepapic_h5': dict(
+        # data_root はここに書かない！（CLIで渡す）
+        pre_seq_length=10,
+        aft_seq_length=10,
+        in_shape=(10, 3, 200, 200),
+        metrics=['mse', 'mae'],
+        use_augment=False,
+        use_prefetcher=False,
+        drop_last=False,
+    ),
+
 }

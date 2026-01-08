@@ -139,3 +139,10 @@ configs_test/
 api/test.py
 configs/kinetics/simvp
 configs/bair/simvp
+# local experiment outputs
+workdirs/
+work_dirs/
+*.ckpt
+*.npy
+*.h5
+
