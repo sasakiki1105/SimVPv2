@@ -1,136 +1,128 @@
 ﻿import os
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 
-def to_5d(x, name="array"):
+def parse_int_list(s: str):
+    if s is None or s == "":
+        return None
+    return [int(x.strip()) for x in s.split(",") if x.strip() != ""]
+
+def to_5d(a: np.ndarray, name: str):
     """
-    Convert common shapes to (N, T, C, H, W).
-    Supports:
-      - (N, T, C, H, W)  -> ok
-      - (T, C, H, W)     -> N=1
-      - (N, C, T, H, W)  -> swap to N,T,C,H,W
-      - (C, T, H, W)     -> N=1, swap to T,C,H,W
-      - (N, T, H, W, C)  -> move C
-      - (T, H, W, C)     -> N=1
+    Accept:
+      (N, T, C, H, W)  -> ok
+      (T, C, H, W)     -> (1, T, C, H, W)
+      (N, C, H, W)     -> (N, 1, C, H, W)
+      (C, H, W)        -> (1, 1, C, H, W)
     """
-    x = np.asarray(x)
-    if x.ndim == 5:
-        # Heuristics to detect where C is
-        # Desired: N,T,C,H,W
-        N, A, B, Cc, D = x.shape
+    if a.ndim == 5:
+        return a
+    if a.ndim == 4:
+        # assume (T,C,H,W)
+        return a[None, ...]
+    if a.ndim == 3:
+        return a[None, None, ...]
+    if a.ndim == 4 and name == "inputs":
+        return a[:, None, ...]
+    raise ValueError(f"{name}: unsupported shape {a.shape}")
 
-        # Case: N,T,C,H,W (common)
-        # Assume if third dim is small-ish (<=10) and last two are large
-        if x.shape[2] <= 20 and x.shape[3] >= 32 and x.shape[4] >= 32:
-            return x
+def ensure_dir(p):
+    os.makedirs(p, exist_ok=True)
 
-        # Case: N,C,T,H,W
-        if x.shape[1] <= 20 and x.shape[2] <= 500 and x.shape[3] >= 32 and x.shape[4] >= 32:
-            return np.transpose(x, (0, 2, 1, 3, 4))
+def normalize_to_uint8(img: np.ndarray, vmin: float, vmax: float):
+    eps = 1e-12
+    x = (img - vmin) / (vmax - vmin + eps)
+    x = np.clip(x, 0.0, 1.0)
+    return (x * 255.0).astype(np.uint8)
 
-        # Case: N,T,H,W,C
-        if x.shape[4] <= 20 and x.shape[2] >= 32 and x.shape[3] >= 32:
-            return np.transpose(x, (0, 1, 4, 2, 3))
-
-        raise ValueError(f"{name}: unsupported 5D shape {x.shape}")
-
-    elif x.ndim == 4:
-        # (T,C,H,W)
-        if x.shape[1] <= 20 and x.shape[2] >= 32 and x.shape[3] >= 32:
-            return x[None, ...]
-        # (C,T,H,W)
-        if x.shape[0] <= 20 and x.shape[2] >= 32 and x.shape[3] >= 32:
-            return np.transpose(x, (1, 0, 2, 3))[None, ...]
-        # (T,H,W,C)
-        if x.shape[3] <= 20 and x.shape[1] >= 32 and x.shape[2] >= 32:
-            return np.transpose(x, (0, 3, 1, 2))[None, ...]
-        raise ValueError(f"{name}: unsupported 4D shape {x.shape}")
-
-    else:
-        raise ValueError(f"{name}: expected 4D or 5D, got shape {x.shape}")
-
-def save_one(fig_path, in_last, true, pred, title):
-    """
-    in_last/true/pred: (H,W) single channel images
-    """
-    err = np.abs(pred - true)
-
-    # Use same scale for input/true/pred for fair comparison
-    vmin = float(np.min([in_last.min(), true.min(), pred.min()]))
-    vmax = float(np.max([in_last.max(), true.max(), pred.max()]))
-
-    # Error scale separate (auto)
-    evmin = float(err.min())
-    evmax = float(err.max())
-
-    fig, axes = plt.subplots(1, 4, figsize=(14, 4), constrained_layout=True)
-    axes[0].imshow(in_last, vmin=vmin, vmax=vmax)
-    axes[0].set_title("Input (last)")
-    axes[1].imshow(true, vmin=vmin, vmax=vmax)
-    axes[1].set_title("True")
-    axes[2].imshow(pred, vmin=vmin, vmax=vmax)
-    axes[2].set_title("Pred")
-    axes[3].imshow(err, vmin=evmin, vmax=evmax)
-    axes[3].set_title("|Error|")
-
-    for ax in axes:
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-    fig.suptitle(title)
-    fig.savefig(fig_path, dpi=150)
-    plt.close(fig)
+def save_png_uint8(path, u8):
+    # Pillow不要、imageioも不要。matplotlib最小依存で保存
+    import matplotlib.pyplot as plt
+    plt.imsave(path, u8, cmap="gray", vmin=0, vmax=255)
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--inputs", default="inputs.npy")
-    ap.add_argument("--preds",  default="preds.npy")
-    ap.add_argument("--trues",  default="trues.npy")
-    ap.add_argument("--outdir", default="viz_pepapic")
+    ap.add_argument("--inputs", required=True, help="inputs.npy (N,Tin,C,H,W)")
+    ap.add_argument("--preds",  required=True, help="preds.npy  (N,Tout,C,H,W)")
+    ap.add_argument("--trues",  required=True, help="trues.npy  (N,Tout,C,H,W)")
+    ap.add_argument("--outdir", required=True)
     ap.add_argument("--nmax", type=int, default=1, help="how many samples to export")
-    ap.add_argument("--tmax", type=int, default=10, help="how many future steps to export")
-    ap.add_argument("--channels", default="0,1,2", help="comma-separated channel indices")
-    ap.add_argument("--chan_names", default="electron_den,ion_den,phi", help="comma-separated names")
+    ap.add_argument("--tmax", type=int, default=None, help="how many future frames to export (default=all)")
+    ap.add_argument("--channels", default=None, help="e.g. 0,1,2 (default=all)")
+    ap.add_argument("--chan_names", default=None, help="e.g. electron_den,ion_den,phi")
+    ap.add_argument("--save_inputs", action="store_true", help="also export all input frames")
+    ap.add_argument("--save_triptych", action="store_true", help="also export triptych (pred vs true) per frame")
     args = ap.parse_args()
 
-    os.makedirs(args.outdir, exist_ok=True)
+    X = to_5d(np.load(args.inputs), "inputs")  # (N, Tin, C, H, W)
+    P = to_5d(np.load(args.preds),  "preds")   # (N, Tout, C, H, W)
+    Y = to_5d(np.load(args.trues),  "trues")   # (N, Tout, C, H, W)
 
-    X = to_5d(np.load(args.inputs), "inputs")   # (N, Tin, C, H, W)
-    P = to_5d(np.load(args.preds),  "preds")    # (N, Tout, C, H, W)
-    Y = to_5d(np.load(args.trues),  "trues")    # (N, Tout, C, H, W)
+    N, Tin, C, H, W = X.shape
+    N2, Tout, C2, H2, W2 = P.shape
+    assert (N2, Tout, C2, H2, W2) == P.shape
+    assert Y.shape == P.shape
+    assert C2 == C and H2 == H and W2 == W, "channel/size mismatch between inputs and preds/trues"
 
-    N = min(args.nmax, X.shape[0], P.shape[0], Y.shape[0])
-    Tin = X.shape[1]
-    Tout = min(args.tmax, P.shape[1], Y.shape[1])
+    chan_list = parse_int_list(args.channels)
+    if chan_list is None:
+        chan_list = list(range(C))
 
-    ch_list = [int(s) for s in args.channels.split(",") if s.strip() != ""]
-    chan_names = [s.strip() for s in args.chan_names.split(",") if s.strip() != ""]
-    def cname(c):
-        return chan_names[c] if 0 <= c < len(chan_names) else f"ch{c}"
+    chan_names = None
+    if args.chan_names:
+        chan_names = [x.strip() for x in args.chan_names.split(",")]
+        if len(chan_names) != C:
+            # channels指定だけに合わせるのが面倒なので、Cと一致しないなら無視
+            chan_names = None
 
-    print("inputs:", X.shape, X.dtype)
-    print("preds: ", P.shape, P.dtype)
-    print("trues: ", Y.shape, Y.dtype)
-    print(f"export N={N}, Tout={Tout}, channels={ch_list}")
+    n_export = min(args.nmax, N)
+    t_export = Tout if args.tmax is None else min(args.tmax, Tout)
 
-    for n in range(N):
-        sample_dir = os.path.join(args.outdir, f"sample_{n:03d}")
-        os.makedirs(sample_dir, exist_ok=True)
+    ensure_dir(args.outdir)
 
-        # last input frame (time Tin-1)
-        for t in range(Tout):
-            for c in ch_list:
-                in_last = X[n, Tin-1, c]
-                true    = Y[n, t, c]
-                pred    = P[n, t, c]
+    for s in range(n_export):
+        # サンプルごとに出力先
+        sdir = os.path.join(args.outdir, f"s{s:03d}")
+        ensure_dir(sdir)
 
-                title = f"sample {n} | future t+{t+1} | {cname(c)} (c={c})"
-                fn = f"s{n:03d}_tp{t+1:02d}_c{c:02d}_{cname(c)}.png"
-                out = os.path.join(sample_dir, fn)
-                save_one(out, in_last, true, pred, title)
+        for c in chan_list:
+            cname = chan_names[c] if chan_names else f"c{c:02d}"
 
-    print("saved to:", os.path.abspath(args.outdir))
+            # ★ 可視化の最重要ポイント：同一サンプル・同一チャネルで vmin/vmax を固定
+            #   → 「うっすらピーク」が見えなくなる問題がかなり減る
+            all_vals = np.concatenate([
+                X[s, :, c].reshape(-1),
+                P[s, :, c].reshape(-1),
+                Y[s, :, c].reshape(-1),
+            ])
+            vmin = float(all_vals.min())
+            vmax = float(all_vals.max())
+
+            # inputs（過去10枚）も全部出すなら
+            if args.save_inputs:
+                for ti in range(Tin):
+                    u8 = normalize_to_uint8(X[s, ti, c], vmin, vmax)
+                    out = os.path.join(sdir, f"s{s:03d}_in{ti:02d}_{cname}.png")
+                    save_png_uint8(out, u8)
+
+            # future（予測10枚）を全部出す
+            for tp in range(t_export):
+                u8p = normalize_to_uint8(P[s, tp, c], vmin, vmax)
+                u8y = normalize_to_uint8(Y[s, tp, c], vmin, vmax)
+
+                out_p = os.path.join(sdir, f"s{s:03d}_tp{tp:02d}_pred_{cname}.png")
+                out_y = os.path.join(sdir, f"s{s:03d}_tp{tp:02d}_true_{cname}.png")
+                save_png_uint8(out_p, u8p)
+                save_png_uint8(out_y, u8y)
+
+                # pred/true を横に並べた比較画像も欲しければ
+                if args.save_triptych:
+                    # (H, 2W)
+                    combo = np.concatenate([u8p, u8y], axis=1)
+                    out_c = os.path.join(sdir, f"s{s:03d}_tp{tp:02d}_pred_true_{cname}.png")
+                    save_png_uint8(out_c, combo)
+
+    print(f"done -> {args.outdir}")
 
 if __name__ == "__main__":
     main()
