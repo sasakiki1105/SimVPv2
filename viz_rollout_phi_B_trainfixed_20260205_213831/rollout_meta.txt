@@ -1,0 +1,12 @@
+h5=C:\Users\astro\research\PEPAPIC\test\results\2D_ExB_high_magnet_dt2.5e-9_maxt50e-6\SimVPv2_inputs\global_norm_trainfixed_minmax_margin20_t0_to_t1000_TCHW.h5
+ckpt=C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_trainfixed\checkpoints\best.ckpt
+config=configs\custom\pepapic\SimVP_gSTA_pepapic.py
+dataname=pepapic_h5
+data_shape(T,C,H,W)=(1001, 3, 100, 100)
+props=['electron_den', 'ion_den', 'phi']
+start=903
+pre=10
+horizon=88
+phi_c=2
+scale_mode=true_p1p99
+Interpretation: seed uses t=[start..start+pre-1], true compares against t=[start+pre .. start+pre+horizon-1]

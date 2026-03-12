@@ -93,11 +93,27 @@ def check_dir(path):
     return path
 
 
+# openstl/utils/main_utils.py
+
 def get_dataset(dataname, config):
     from openstl.datasets import dataset_parameters
     from openstl.datasets import load_data
+
     config.update(dataset_parameters[dataname])
-    return load_data(**config)
+
+    train_loader, vali_loader, test_loader = load_data(**config)
+
+    # ★ここが追加：in_shape 未指定なら、Datasetから自動補完
+    if config.get("in_shape", None) is None:
+        ds = train_loader.dataset
+        if hasattr(ds, "in_shape"):
+            config["in_shape"] = tuple(ds.in_shape)
+        else:
+            # 最低限の保険（shapeが取れるなら推定）
+            if hasattr(ds, "C") and hasattr(ds, "H") and hasattr(ds, "W"):
+                config["in_shape"] = (config["pre_seq_length"], ds.C, ds.H, ds.W)
+
+    return train_loader, vali_loader, test_loader
 
 
 def measure_throughput(model, input_dummy):

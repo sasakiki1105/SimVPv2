@@ -224,7 +224,7 @@ dataset_parameters = {
         # data_root はここに書かない！（CLIで渡す）
         pre_seq_length=10,
         aft_seq_length=10,
-        in_shape=(10, 3, 200, 200),
+        in_shape=None,          # ★固定をやめる
         metrics=['mse', 'mae'],
         use_augment=False,
         use_prefetcher=False,

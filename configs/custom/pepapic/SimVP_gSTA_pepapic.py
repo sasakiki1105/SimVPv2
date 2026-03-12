@@ -15,6 +15,6 @@ sched = 'onecycle'
 # --- dataset ---
 pre_seq_length = 10
 aft_seq_length = 10
-in_shape = (pre_seq_length, 3, 200, 200) 
+in_shape = None     # ★固定禁止（autoに任せる）
 # evaluation
 metrics = ['mse', 'mae']   # まずはこれでOK（必要なら後で ssim/psnr 追加）
