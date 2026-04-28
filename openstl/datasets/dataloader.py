@@ -1,8 +1,3 @@
-# Copyright (c) CAIRI AI Lab. All rights reserved
-
-from .dataloader_pepapic_h5 import load_data as load_pepapic_h5
-
-
 def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist=False, **kwargs):
     cfg_dataloader = dict(
         pre_seq_length=kwargs.get('pre_seq_length', 10),
@@ -14,50 +9,77 @@ def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist
         drop_last=kwargs.get('drop_last', False),
     )
 
-    if dataname == 'bair':
-        from .dataloader_bair import load_data
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif dataname == 'human':
-        from .dataloader_human import load_data
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+    if dataname == 'taxibj':
+        from .dataloader_taxibj import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname == 'mmnist':
+        from .dataloader_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='mnist', **cfg_dataloader)
+
+    elif dataname == 'mfmnist':
+        from .dataloader_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='fmnist', **cfg_dataloader)
+
+    elif dataname == 'mmnist_cifar':
+        from .dataloader_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='mnist_cifar', **cfg_dataloader)
+
+    elif dataname == 'noisymmnist_dynamic':
+        from .dataloader_noisy_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='noisymmnist_dynamic', **cfg_dataloader)
+
+    elif dataname == 'noisymmnist_missing':
+        from .dataloader_noisy_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='noisymmnist_missing', **cfg_dataloader)
+
+    elif dataname == 'noisymmnist_perceptual':
+        from .dataloader_noisy_moving_mnist import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, data_name='noisymmnist_perceptual', **cfg_dataloader)
+
+    elif dataname == 'kinetics':
+        from .dataloader_kinetics import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
     elif dataname == 'kitticaltech':
-        from .dataloader_kitticaltech import load_data
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif 'kth' in dataname:  # 'kth', 'kth20', 'kth40'
-        from .dataloader_kth import load_data
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif dataname in ['mmnist', 'mfmnist', 'mmnist_cifar']:  # 'mmnist', 'mfmnist', 'mmnist_cifar'
-        from .dataloader_moving_mnist import load_data
-        cfg_dataloader['data_name'] = kwargs.get('data_name', 'mnist')
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif 'noisymmnist' in dataname:  # 'mmnist - perceptual', 'mmnist - missing', 'mmnist - dynamic' 
-        from .dataloader_noisy_moving_mnist import load_data
-        cfg_dataloader['noise_type'] = kwargs.get('noise_type', 'perceptual')
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif 'kinetics' in dataname:  # 'kinetics400', 'kinetics600'
-        from .dataloader_kinetics import load_data
-        cfg_dataloader['data_name'] = kwargs.get('data_name', 'kinetics400')
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif dataname == 'taxibj':
-        from .dataloader_taxibj import load_data
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
-    elif 'weather' in dataname:  # 'weather', 'weather_t2m', etc.
-        from .dataloader_weather import load_data
-        data_split_pool = ['5_625', '2_8125', '1_40625']
-        data_split = '5_625'
-        for k in data_split_pool:
-            if dataname.find(k) != -1:
-                data_split = k
-        return load_data(batch_size, val_batch_size, data_root, num_workers,
-                         distributed=dist, data_split=data_split, **kwargs)
-    elif 'sevir' in dataname:  #'sevir_vis', 'sevir_ir069', 'sevir_ir107', 'sevir_vil'
-        from .dataloader_sevir import load_data
-        cfg_dataloader['data_name'] = kwargs.get('data_name', 'sevir')
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+        from .dataloader_kitticaltech import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname == 'human':
+        from .dataloader_human import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname == 'kth':
+        from .dataloader_kth import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname == 'bair':
+        from .dataloader_bair import load_data as _load
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname in [
+        'weather',
+        'weather_t2m_5_625', 'weather_t2m_1_40625',
+        'weather_r_5_625', 'weather_r_1_40625',
+        'weather_uv10_5_625', 'weather_uv10_1_40625',
+        'weather_tcc_5_625', 'weather_tcc_1_40625'
+    ]:
+        from .dataloader_weather import load_data as _load
+        cfg_dataloader['data_name'] = dataname
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
+    elif dataname in ['sevir', 'sevir_ir069', 'sevir_ir107', 'sevir_vil', 'sevir_vis']:
+        from .dataloader_sevir import load_data as _load
+        cfg_dataloader['data_name'] = dataname
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
     elif dataname == 'pepapic_h5':
-        from .dataloader_pepapic_h5 import load_data
-        # 必要なら kwargs で stride/train_ratio/val_ratio を渡せる
-        return load_data(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+        from .dataloader_pepapic_h5 import load_data as _load
+        cfg_dataloader['train_ratio'] = kwargs.get('train_ratio', 0.8)
+        cfg_dataloader['val_ratio'] = kwargs.get('val_ratio', 0.1)
+        cfg_dataloader['test_ratio'] = kwargs.get('test_ratio', 0.1)
+        cfg_dataloader['force_test_all'] = kwargs.get('force_test_all', False)
+        return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
+
     else:
-        raise ValueError(f'Dataname {dataname} is unsupported')
-    
+        raise ValueError(f"Invalid dataname: {dataname}")

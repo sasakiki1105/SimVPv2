@@ -1,4 +1,5 @@
 method = 'SimVP'
+
 # model
 spatio_kernel_enc = 3
 spatio_kernel_dec = 3
@@ -7,14 +8,18 @@ hid_S = 64
 hid_T = 512
 N_T = 8
 N_S = 4
+
 # training
 lr = 1e-3
-batch_size = 16
+batch_size = 2
 drop_path = 0
 sched = 'onecycle'
-# --- dataset ---
+epoch = 100
+
+# dataset
 pre_seq_length = 10
 aft_seq_length = 10
-in_shape = None     # ★固定禁止（autoに任せる）
+in_shape = None
+
 # evaluation
-metrics = ['mse', 'mae']   # まずはこれでOK（必要なら後で ssim/psnr 追加）
+metrics = ['mse', 'mae']

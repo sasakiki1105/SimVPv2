@@ -10,7 +10,6 @@ def _as_str_list(x):
         return None
     if isinstance(x, (list, tuple)):
         return [str(v) for v in x]
-    # h5py で可変長文字列などの可能性
     try:
         return [v.decode() if isinstance(v, (bytes, bytearray)) else str(v) for v in x]
     except Exception:
@@ -31,14 +30,38 @@ def _canon_to_TCHW(f: h5py.File):
     if isinstance(layout, (bytes, bytearray)):
         layout = layout.decode()
 
-    # Case A: already T,C,H,W
     if "data_tchw" in f:
         X = f["data_tchw"][()]
         X = np.asarray(X, dtype=np.float32)
         assert X.ndim == 4, f"data_tchw must be 4D, got {X.shape}"
-        return X, props, timesteps, layout
 
-    # Case B: generic "data"
+        if timesteps is not None:
+            Tlen = len(timesteps)
+
+            # already (T,C,H,W)
+            if X.shape[0] == Tlen:
+                return X, props, timesteps, layout
+
+            # actually (H,W,C,T)
+            if X.shape[3] == Tlen:
+                X = np.transpose(X, (3, 2, 0, 1))  # -> (T,C,H,W)
+                return X, props, timesteps, layout
+
+            # actually (T,H,W,C)
+            if X.shape[0] == Tlen and X.shape[3] <= 16:
+                X = np.transpose(X, (0, 3, 1, 2))  # -> (T,C,H,W)
+                return X, props, timesteps, layout
+
+        # fallback
+        if X.shape[2] <= 16 and X.shape[3] >= 10:
+            X = np.transpose(X, (3, 2, 0, 1))  # assume (H,W,C,T)
+            return X, props, timesteps, layout
+
+        raise ValueError(
+            f"'data_tchw' exists but shape looks wrong: {X.shape}. "
+            f"Expected T on axis 0 or axis 3 matched with timesteps."
+        )
+
     if "data" not in f:
         raise KeyError("H5 must contain either 'data_tchw' or 'data'")
 
@@ -46,22 +69,20 @@ def _canon_to_TCHW(f: h5py.File):
     X = np.asarray(X, dtype=np.float32)
     assert X.ndim == 4, f"data must be 4D, got {X.shape}"
 
-    # Heuristic using timesteps length, because your magnet case is (H,W,C,T)
     if timesteps is not None:
         Tlen = len(timesteps)
+
         # (H,W,C,T)
         if X.shape[3] == Tlen:
             X = np.transpose(X, (3, 2, 0, 1))  # -> (T,C,H,W)
             return X, props, timesteps, layout
+
         # (T,H,W,C)
         if X.shape[0] == Tlen:
             X = np.transpose(X, (0, 3, 1, 2))  # -> (T,C,H,W)
             return X, props, timesteps, layout
 
-    # Fallback by common layouts
-    # If last dim looks like T (>= pre+aft) and third dim looks like C (<=16)
     if X.shape[2] <= 16 and X.shape[3] >= 10:
-        # assume (H,W,C,T)
         X = np.transpose(X, (3, 2, 0, 1))
         return X, props, timesteps, layout
 
@@ -71,17 +92,62 @@ def _canon_to_TCHW(f: h5py.File):
     )
 
 
+def _build_disjoint_starts(T, total, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1):
+    """
+    Split by FRAME ranges, not by start ranges.
+    No sample in train/val/test shares any frame with another split.
+    """
+    if total <= 0:
+        raise ValueError(f"total must be positive, got {total}")
+    if T < total:
+        raise ValueError(f"T={T} is smaller than total window length={total}")
+
+    s = train_ratio + val_ratio + test_ratio
+    if not np.isclose(s, 1.0):
+        raise ValueError(f"train/val/test ratios must sum to 1.0, got {s}")
+
+    train_end = int(np.floor(T * train_ratio))                 # exclusive
+    val_end = int(np.floor(T * (train_ratio + val_ratio)))     # exclusive
+
+    def starts_in_range(frame_start, frame_end):
+        last_start = frame_end - total
+        if last_start < frame_start:
+            return np.empty((0,), dtype=np.int32)
+        return np.arange(frame_start, last_start + 1, dtype=np.int32)
+
+    train_starts = starts_in_range(0, train_end)
+    val_starts = starts_in_range(train_end, val_end)
+    test_starts = starts_in_range(val_end, T)
+
+    info = {
+        "T": T,
+        "total": total,
+        "train_frame_range": (0, train_end - 1),
+        "val_frame_range": (train_end, val_end - 1),
+        "test_frame_range": (val_end, T - 1),
+        "n_train": len(train_starts),
+        "n_val": len(val_starts),
+        "n_test": len(test_starts),
+    }
+    return train_starts, val_starts, test_starts, info
+
+
 class _PEPAPICWindows(Dataset):
     """
     Provides (X_pre, Y_aft) windows from data_tchw (T,C,H,W).
-    Also exposes:
-      - in_shape = (pre_seq_length, C, H, W)  ★重要
-      - mean/std (for BaseDataModule compatibility)
-      - starts (window start indices)
+    Split is FRAME-disjoint: train/val/test do not share any frame.
     """
-    def __init__(self, h5_path: str, pre_seq_length: int, aft_seq_length: int, split: str = "train",
-                 train_ratio: float = 0.8, val_ratio: float = 0.1, test_ratio: float = 0.1,
-                 force_test_all: bool = False):
+    def __init__(
+        self,
+        h5_path: str,
+        pre_seq_length: int,
+        aft_seq_length: int,
+        split: str = "train",
+        train_ratio: float = 0.8,
+        val_ratio: float = 0.1,
+        test_ratio: float = 0.1,
+        force_test_all: bool = False,
+    ):
         self.h5_path = h5_path
         self.pre = int(pre_seq_length)
         self.aft = int(aft_seq_length)
@@ -90,37 +156,30 @@ class _PEPAPICWindows(Dataset):
         with h5py.File(h5_path, "r") as f:
             X, props, timesteps, layout = _canon_to_TCHW(f)
 
-        self.data = X  # (T,C,H,W) float32
+        self.data = X  # (T,C,H,W)
         self.props = props
         self.timesteps = timesteps
         self.layout = layout
 
         T, C, H, W = self.data.shape
         self.C, self.H, self.W = C, H, W
-        self.in_shape = (self.pre, C, H, W)   # ★ここが目的
+        self.in_shape = (self.pre, C, H, W)
 
-        # BaseDataModule が参照するので持たせる（既に正規化済みなら mean=0 std=1 でOK）
         self.mean = 0.0
         self.std = 1.0
         self.data_name = "pepapic_h5"
 
-        # window starts
-        starts = np.arange(0, T - self.total + 1, dtype=np.int32)
+        train_starts, val_starts, test_starts, info = _build_disjoint_starts(
+            T, self.total,
+            train_ratio=train_ratio,
+            val_ratio=val_ratio,
+            test_ratio=test_ratio
+        )
+        self.split_info = info
 
         if force_test_all and split == "test":
-            self.starts = starts
-            return
-
-        n = len(starts)
-        n_train = int(round(train_ratio * n))
-        n_val = int(round(val_ratio * n))
-        n_test = max(0, n - n_train - n_val)
-
-        train_starts = starts[:n_train]
-        val_starts = starts[n_train:n_train + n_val]
-        test_starts = starts[n_train + n_val:] if n_test > 0 else starts[-max(1, min(9, n)):]  # fallback
-
-        if split == "train":
+            self.starts = test_starts
+        elif split == "train":
             self.starts = train_starts
         elif split in ("val", "valid", "vali"):
             self.starts = val_starts
@@ -129,42 +188,74 @@ class _PEPAPICWindows(Dataset):
         else:
             raise ValueError(f"Unknown split: {split}")
 
+        if len(self.starts) == 0:
+            raise ValueError(
+                f"No samples for split={split}. split_info={self.split_info}"
+            )
+
     def __len__(self):
         return len(self.starts)
 
     def __getitem__(self, idx):
         st = int(self.starts[idx])
-        X = self.data[st:st + self.pre]                    # (pre,C,H,W)
+        X = self.data[st:st + self.pre]                         # (pre,C,H,W)
         Y = self.data[st + self.pre:st + self.pre + self.aft]  # (aft,C,H,W)
         return X, Y
 
 
-def load_data(batch_size, val_batch_size, data_root, num_workers,
-              pre_seq_length=10, aft_seq_length=10, in_shape=None, distributed=False,
-              use_augment=False, use_prefetcher=False, drop_last=False,
-              train_ratio=0.8, val_ratio=0.1, test_ratio=0.1,
-              force_test_all=False, **kwargs):
-
+def load_data(
+    batch_size,
+    val_batch_size,
+    data_root,
+    num_workers,
+    pre_seq_length=10,
+    aft_seq_length=10,
+    in_shape=None,
+    distributed=False,
+    use_augment=False,
+    use_prefetcher=False,
+    drop_last=False,
+    train_ratio=0.8,
+    val_ratio=0.1,
+    test_ratio=0.1,
+    force_test_all=False,
+    **kwargs
+):
     h5_path = data_root
     assert isinstance(h5_path, (str, os.PathLike)), f"data_root must be a path, got {type(h5_path)}"
     h5_path = os.fspath(h5_path)
     assert os.path.exists(h5_path), f"not found: {h5_path}"
 
-    train_set = _PEPAPICWindows(h5_path, pre_seq_length, aft_seq_length, split="train",
-                               train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
-                               force_test_all=False)
-    val_set = _PEPAPICWindows(h5_path, pre_seq_length, aft_seq_length, split="val",
-                             train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
-                             force_test_all=False)
-    test_set = _PEPAPICWindows(h5_path, pre_seq_length, aft_seq_length, split="test",
-                              train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
-                              force_test_all=force_test_all)
+    train_set = _PEPAPICWindows(
+        h5_path, pre_seq_length, aft_seq_length, split="train",
+        train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
+        force_test_all=False
+    )
+    val_set = _PEPAPICWindows(
+        h5_path, pre_seq_length, aft_seq_length, split="val",
+        train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
+        force_test_all=False
+    )
+    test_set = _PEPAPICWindows(
+        h5_path, pre_seq_length, aft_seq_length, split="test",
+        train_ratio=train_ratio, val_ratio=val_ratio, test_ratio=test_ratio,
+        force_test_all=force_test_all
+    )
 
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
-                              num_workers=num_workers, drop_last=drop_last, pin_memory=True)
-    val_loader = DataLoader(val_set, batch_size=val_batch_size, shuffle=False,
-                            num_workers=num_workers, drop_last=False, pin_memory=True)
-    test_loader = DataLoader(test_set, batch_size=val_batch_size, shuffle=False,
-                             num_workers=num_workers, drop_last=False, pin_memory=True)
+    print("[PEPAPIC split info]")
+    print(train_set.split_info)
+
+    train_loader = DataLoader(
+        train_set, batch_size=batch_size, shuffle=True,
+        num_workers=num_workers, drop_last=drop_last, pin_memory=True
+    )
+    val_loader = DataLoader(
+        val_set, batch_size=val_batch_size, shuffle=False,
+        num_workers=num_workers, drop_last=False, pin_memory=True
+    )
+    test_loader = DataLoader(
+        test_set, batch_size=val_batch_size, shuffle=False,
+        num_workers=num_workers, drop_last=False, pin_memory=True
+    )
 
     return train_loader, val_loader, test_loader
