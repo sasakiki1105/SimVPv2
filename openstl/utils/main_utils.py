@@ -99,7 +99,9 @@ def get_dataset(dataname, config):
     from openstl.datasets import dataset_parameters
     from openstl.datasets import load_data
 
-    config.update(dataset_parameters[dataname])
+    for key, value in dataset_parameters[dataname].items():
+        if key not in config or config[key] is None:
+            config[key] = value
 
     train_loader, vali_loader, test_loader = load_data(**config)
 

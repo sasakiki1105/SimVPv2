@@ -2,7 +2,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-BASE = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_trainfixed\rollout_tp0_quads_assets"
+BASE = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_macro5_subsample4_trainfixed_disjoint_811_bs2_100ep\rollout_tp0_quads_assets"
+
+X_MODE = "time_us"
+DT_NS = 50.0
 
 P_PATH = os.path.join(BASE, "preds_roll.npy")
 Y_PATH = os.path.join(BASE, "trues_roll.npy")

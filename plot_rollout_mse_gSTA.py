@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # - 正規化空間：trues_roll.npy / preds_roll.npy
 # - 逆正規化空間：trues_roll_denorm.npy / preds_roll_denorm.npy
 
-BASE = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_macro5_trainfixed_disjoint_811_bs2_100ep\rollout_tp0_quads_assets"
+BASE = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_macro5_subsample4_trainfixed_disjoint_811_bs2_100ep\rollout_tp0_quads_assets"
 
 # --- choose one set ---
 P_PATH = os.path.join(BASE, "preds_roll.npy")

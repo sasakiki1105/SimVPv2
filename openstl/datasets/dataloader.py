@@ -79,6 +79,9 @@ def load_data(dataname, batch_size, val_batch_size, num_workers, data_root, dist
         cfg_dataloader['val_ratio'] = kwargs.get('val_ratio', 0.1)
         cfg_dataloader['test_ratio'] = kwargs.get('test_ratio', 0.1)
         cfg_dataloader['force_test_all'] = kwargs.get('force_test_all', False)
+        cfg_dataloader['pepapic_condition_channels'] = kwargs.get('pepapic_condition_channels', None)
+        cfg_dataloader['pepapic_condition_b_scale_mT'] = kwargs.get('pepapic_condition_b_scale_mT', 1.0)
+        cfg_dataloader['pepapic_condition_dt_scale_ns'] = kwargs.get('pepapic_condition_dt_scale_ns', 1.0)
         return _load(batch_size, val_batch_size, data_root, num_workers, **cfg_dataloader)
 
     else:

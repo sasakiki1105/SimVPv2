@@ -45,7 +45,8 @@ class BaseExperiment(object):
                        max_epochs=args.epoch,  # Maximum number of epochs to train for
                        strategy=strategy,   # 'ddp', 'deepspeed_stage_2', 'ddp_find_unused_parameters_false'
                        accelerator='gpu',  # Use distributed data parallel
-                       callbacks=callbacks
+                       callbacks=callbacks,
+                       enable_progress_bar=False
                     )
 
     def _load_callbacks(self, args, save_dir, ckpt_dir):

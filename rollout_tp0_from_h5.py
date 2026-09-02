@@ -1,21 +1,25 @@
+import argparse
+import csv
+import json
 import os
 import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import runpy
 
-H5_PATH = r"C:\Users\astro\research\PEPAPIC\test\results\2D_ExB_high_magnet_dt2.5e-9_maxt50e-6_macro5\SimVPv2_inputs\global_norm_trainfixed_minmax_margin20_t0_to_t4000.h5"
+H5_PATH = r"C:\Users\astro\research\PEPAPIC\test\results\2D_ExB_high_magnet_dt2.5e-9_maxt50e-6_macro5\SimVPv2_inputs\global_norm_trainfixed_minmax_margin20_t0_to_t4000_step4.h5"
 H5_KEY  = r"data_tchw"
 
-WORKDIR = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_macro5_trainfixed_disjoint_811_bs2_100ep"
+WORKDIR = r"C:\Users\astro\research\SimVPv2\workdirs\pepapic_simvp_gsta_highmag_macro5_subsample4_trainfixed_disjoint_811_bs2_100ep"
 CFG_PATH = r"C:\Users\astro\research\SimVPv2\configs\custom\pepapic\SimVP_gSTA_pepapic.py"
 CKPT_PATH = os.path.join(WORKDIR, "checkpoints", "best.ckpt")
 
 OUTDIR  = os.path.join(WORKDIR, "rollout_tp0_quads_assets")
-os.makedirs(OUTDIR, exist_ok=True)
 
 TIN = 10
-K   = 100   # rollout length
+C_TARGET = 2
+DT_NS = 50.0
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -55,15 +59,15 @@ def load_tchw_from_h5(path, key):
 
 def split_frames_tchw_disjoint_811(x_tchw, total=20):
     """
-    Frame-disjoint split matching the current dataloader logic:
-      train: [0, 3200)
-      val  : [3200, 3600)
-      test : [3600, 4001)
-    for T=4001
+    Frame-disjoint split matching the current dataloader logic.
+    For T=1001:
+      train: [0, 800)
+      val  : [800, 900)
+      test : [900, 1001)
     """
     T = x_tchw.shape[0]
-    train_end = int(np.floor(T * 0.8))   # 3200
-    val_end   = int(np.floor(T * 0.9))   # 3600
+    train_end = int(np.floor(T * 0.8))
+    val_end   = int(np.floor(T * 0.9))
 
     x_tr = x_tchw[:train_end]
     x_va = x_tchw[train_end:val_end]
@@ -71,10 +75,10 @@ def split_frames_tchw_disjoint_811(x_tchw, total=20):
     return x_tr, x_va, x_te
 
 
-def build_model_from_config_and_ckpt():
+def build_model_from_config_and_ckpt(cfg_path, ckpt_path):
     from openstl.models.simvp_model import SimVP_Model
 
-    cfg = runpy.run_path(CFG_PATH)
+    cfg = runpy.run_path(cfg_path)
 
     in_shape = (TIN, 3, 100, 100)
 
@@ -90,7 +94,7 @@ def build_model_from_config_and_ckpt():
         spatio_kernel_dec=int(cfg.get("spatio_kernel_dec", 3)),
     )
 
-    sd = torch.load(CKPT_PATH, map_location="cpu")
+    sd = torch.load(ckpt_path, map_location="cpu")
     state_dict = sd["state_dict"] if isinstance(sd, dict) and "state_dict" in sd else sd
     state_dict = {
         (k.replace("model.", "", 1) if k.startswith("model.") else k): v
@@ -121,8 +125,81 @@ def forward_tp0(model, x_10chw):
     raise RuntimeError(f"unexpected output shape: {getattr(y,'shape',None)}")
 
 
+def argmax_2d(a2d):
+    idx = int(np.argmax(a2d))
+    return np.unravel_index(idx, a2d.shape)
+
+
+def compute_phi_metrics(preds_roll, trues_roll):
+    pred_phi = preds_roll[:, 0, C_TARGET].astype(np.float64)
+    true_phi = trues_roll[:, 0, C_TARGET].astype(np.float64)
+    mse = np.mean((pred_phi - true_phi) ** 2, axis=(1, 2))
+    peak_val_err = np.zeros(len(mse), dtype=np.float64)
+    peak_loc_err = np.zeros(len(mse), dtype=np.float64)
+
+    for k in range(len(mse)):
+        p = pred_phi[k]
+        t = true_phi[k]
+        peak_val_err[k] = abs(float(p.max()) - float(t.max()))
+        py, px = argmax_2d(p)
+        ty, tx = argmax_2d(t)
+        peak_loc_err[k] = float(((py - ty) ** 2 + (px - tx) ** 2) ** 0.5)
+
+    return mse, peak_val_err, peak_loc_err
+
+
+def save_line_plot(x, y, xlabel, ylabel, title, out_png):
+    plt.figure()
+    plt.plot(x, y)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=150)
+    plt.close()
+    print("[PLOT]", out_png)
+
+
+def save_metrics_csv(out_csv, mse, peak_val_err, peak_loc_err, dt_ns):
+    with open(out_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "frame_index",
+            "time_us",
+            "mse_phi",
+            "peak_val_err_phi",
+            "peak_loc_err_phi_px",
+        ])
+        for k in range(len(mse)):
+            writer.writerow([
+                k,
+                k * dt_ns / 1000.0,
+                float(mse[k]),
+                float(peak_val_err[k]),
+                float(peak_loc_err[k]),
+            ])
+    print("[CSV]", out_csv)
+
+
 def main():
-    data = load_tchw_from_h5(H5_PATH, H5_KEY)   # (4001,3,100,100)
+    ap = argparse.ArgumentParser(
+        description="Closed-loop rollout that feeds back only the first predicted frame."
+    )
+    ap.add_argument("--h5-path", default=H5_PATH)
+    ap.add_argument("--h5-key", default=H5_KEY)
+    ap.add_argument("--workdir", default=WORKDIR)
+    ap.add_argument("--config-path", default=CFG_PATH)
+    ap.add_argument("--ckpt-path", default=None)
+    ap.add_argument("--outdir", default=None)
+    ap.add_argument("--dt-ns", type=float, default=DT_NS)
+    args = ap.parse_args()
+
+    workdir = args.workdir
+    ckpt_path = args.ckpt_path or os.path.join(workdir, "checkpoints", "best.ckpt")
+    outdir = args.outdir or os.path.join(workdir, "rollout_tp0_quads_assets")
+    os.makedirs(outdir, exist_ok=True)
+
+    data = load_tchw_from_h5(args.h5_path, args.h5_key)
     print("[INFO] data:", data.shape, data.dtype)
 
     tr, va, te = split_frames_tchw_disjoint_811(data, total=TIN+TIN)
@@ -139,7 +216,7 @@ def main():
     # 最大 rollout 長は test の長さ
     K = te.shape[0]       # 今回は 401
     gt = te[:K]           # (K,C,H,W)
-    model = build_model_from_config_and_ckpt()
+    model = build_model_from_config_and_ckpt(args.config_path, ckpt_path)
 
     x = torch.from_numpy(seed).to(DEVICE)
     gt_t = torch.from_numpy(gt).to(DEVICE)
@@ -160,11 +237,91 @@ def main():
     preds_roll  = np.stack(preds_roll,  axis=0)   # (K,1,C,H,W)
     trues_roll  = np.stack(trues_roll,  axis=0)   # (K,1,C,H,W)
 
-    np.save(os.path.join(OUTDIR, "inputs_roll.npy"), inputs_roll)
-    np.save(os.path.join(OUTDIR, "preds_roll.npy"),  preds_roll)
-    np.save(os.path.join(OUTDIR, "trues_roll.npy"),  trues_roll)
+    np.save(os.path.join(outdir, "inputs_roll.npy"), inputs_roll)
+    np.save(os.path.join(outdir, "preds_roll.npy"),  preds_roll)
+    np.save(os.path.join(outdir, "trues_roll.npy"),  trues_roll)
 
-    print("[DONE] saved to:", OUTDIR)
+    mse, peak_val_err, peak_loc_err = compute_phi_metrics(preds_roll, trues_roll)
+    x_iter = np.arange(len(mse), dtype=np.float64)
+    x_time = x_iter * args.dt_ns / 1000.0
+
+    save_line_plot(
+        x_iter,
+        mse,
+        "Rollout frame index",
+        "MSE (phi)",
+        "TP0 rollout MSE vs frame index",
+        os.path.join(outdir, "mse_curve_phi.png"),
+    )
+    save_line_plot(
+        x_time,
+        mse,
+        "Physical time since rollout start (us)",
+        "MSE (phi)",
+        "TP0 rollout MSE vs physical time",
+        os.path.join(outdir, "mse_curve_phi_time_us.png"),
+    )
+    save_line_plot(
+        x_time,
+        peak_val_err,
+        "Physical time since rollout start (us)",
+        "Peak value error (abs)",
+        "TP0 rollout peak value error (phi)",
+        os.path.join(outdir, "peak_val_err_phi_time_us.png"),
+    )
+    save_line_plot(
+        x_time,
+        peak_loc_err,
+        "Physical time since rollout start (us)",
+        "Peak location error (pixels)",
+        "TP0 rollout peak location error (phi)",
+        os.path.join(outdir, "peak_loc_err_phi_time_us.png"),
+    )
+    save_metrics_csv(
+        os.path.join(outdir, "rollout_metrics_phi.csv"),
+        mse,
+        peak_val_err,
+        peak_loc_err,
+        args.dt_ns,
+    )
+
+    metadata = {
+        "rollout_type": "tp0",
+        "description": "Predict 10 retained frames, feed back only the first predicted frame as the newest input frame.",
+        "h5_path": args.h5_path,
+        "h5_key": args.h5_key,
+        "workdir": workdir,
+        "ckpt_path": ckpt_path,
+        "outdir": outdir,
+        "tin": TIN,
+        "tout_used_per_step": 1,
+        "dt_ns_per_retained_frame": args.dt_ns,
+        "device": DEVICE,
+        "split_shapes": {
+            "train": list(tr.shape),
+            "val": list(va.shape),
+            "test": list(te.shape),
+        },
+        "seed_frame_range_in_h5": [data.shape[0] - te.shape[0] - TIN, data.shape[0] - te.shape[0] - 1],
+        "test_frame_count": int(K),
+        "saved_shapes": {
+            "inputs_roll": list(inputs_roll.shape),
+            "preds_roll": list(preds_roll.shape),
+            "trues_roll": list(trues_roll.shape),
+        },
+        "metrics_phi": {
+            "mse_first": float(mse[0]),
+            "mse_last": float(mse[-1]),
+            "mse_mean": float(np.mean(mse)),
+            "mse_max": float(np.max(mse)),
+            "peak_val_err_mean": float(np.mean(peak_val_err)),
+            "peak_loc_err_mean_px": float(np.mean(peak_loc_err)),
+        },
+    }
+    with open(os.path.join(outdir, "rollout_metadata.json"), "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
+    print("[DONE] saved to:", outdir)
     print(" inputs_roll:", inputs_roll.shape)
     print(" preds_roll :", preds_roll.shape)
     print(" trues_roll :", trues_roll.shape)

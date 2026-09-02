@@ -57,16 +57,31 @@ class EpochEndCallback(Callback):
             print_log(f"Epoch {trainer.current_epoch}: Lr: {lr:.7f} | Train Loss: {self.avg_train_loss:.7f} | Vali Loss: {avg_val_loss:.7f}")
 
 class BestCheckpointCallback(ModelCheckpoint):
+    @staticmethod
+    def _copy_best_alias(best_path):
+        alias_path = osp.join(osp.dirname(best_path), 'best.ckpt')
+        if osp.abspath(best_path) == osp.abspath(alias_path):
+            return
+        if not osp.isfile(best_path):
+            if osp.isfile(alias_path):
+                logging.warning(
+                    'Recorded best checkpoint is missing; preserving existing best.ckpt: %s',
+                    best_path,
+                )
+                return
+            raise FileNotFoundError(best_path)
+        shutil.copy(best_path, alias_path)
+
     def on_validation_epoch_end(self, trainer, pl_module):
         super().on_validation_epoch_end(trainer, pl_module)
         checkpoint_callback = trainer.checkpoint_callback
         if checkpoint_callback and checkpoint_callback.best_model_path and trainer.global_rank == 0:
             best_path = checkpoint_callback.best_model_path
-            shutil.copy(best_path, osp.join(osp.dirname(best_path), 'best.ckpt'))
+            self._copy_best_alias(best_path)
 
     def on_test_end(self, trainer, pl_module):
         super().on_test_end(trainer, pl_module)
         checkpoint_callback = trainer.checkpoint_callback
         if checkpoint_callback and checkpoint_callback.best_model_path and trainer.global_rank == 0:
             best_path = checkpoint_callback.best_model_path
-            shutil.copy(best_path, osp.join(osp.dirname(best_path), 'best.ckpt'))
+            self._copy_best_alias(best_path)
