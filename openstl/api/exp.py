@@ -9,7 +9,7 @@ import torch
 
 from openstl.methods import method_maps
 from openstl.datasets import BaseDataModule
-from openstl.utils import (get_dataset, measure_throughput, SetupCallback, EpochEndCallback, BestCheckpointCallback)
+from openstl.utils import (get_dataset, measure_throughput, SetupCallback, EpochEndCallback, BestCheckpointCallback, SnapshotCallback)
 
 from lightning import seed_everything, Trainer
 import lightning.pytorch.callbacks as lc
@@ -78,6 +78,12 @@ class BaseExperiment(object):
         epochend_callback = EpochEndCallback()
 
         callbacks = [setup_callback, ckpt_callback, epochend_callback]
+        snapshots = getattr(args, 'snapshot_epochs', None)
+        if snapshots:
+            if isinstance(snapshots, str):
+                snapshots = [int(v) for v in snapshots.split(',') if v.strip()]
+            callbacks.append(SnapshotCallback(ckpt_dir, snapshots,
+                getattr(args, 'snapshot_epoch_numbering', 'zero_based')))
         if args.sched:
             callbacks.append(lc.LearningRateMonitor(logging_interval=None))
         return callbacks, save_dir

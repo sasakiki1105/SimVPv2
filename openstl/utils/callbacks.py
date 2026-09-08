@@ -85,3 +85,35 @@ class BestCheckpointCallback(ModelCheckpoint):
         if checkpoint_callback and checkpoint_callback.best_model_path and trainer.global_rank == 0:
             best_path = checkpoint_callback.best_model_path
             self._copy_best_alias(best_path)
+
+
+class SnapshotCallback(Callback):
+    """Save a checkpoint at a fixed list of epochs, in addition to best/last.
+
+    Opt-in via --snapshot_epochs; with no such argument nothing is saved and
+    existing runs are unaffected.  Used by the frozen architecture contrast so
+    that the source-validation vs holdout-physics selector question can be
+    answered from the same runs.  These snapshots are for analysis only -- gate
+    evaluation still uses the validation-selected best.ckpt.
+    """
+
+    def __init__(self, ckpt_dir, epochs, epoch_numbering="zero_based"):
+        super().__init__()
+        self.ckpt_dir = ckpt_dir
+        self.epochs = sorted(set(int(e) for e in epochs))
+        if epoch_numbering not in ("zero_based", "completed"):
+            raise ValueError("snapshot_epoch_numbering must be zero_based or completed")
+        self.epoch_numbering = epoch_numbering
+        if any(e < (1 if epoch_numbering == "completed" else 0) for e in self.epochs):
+            raise ValueError("Invalid snapshot epoch")
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        epoch = int(trainer.current_epoch)
+        requested = epoch + (self.epoch_numbering == "completed")
+        if getattr(trainer, "sanity_checking", False):
+            return
+        if requested in self.epochs and trainer.global_rank == 0:
+            path = osp.join(self.ckpt_dir, 'snapshot-epoch=%02d.ckpt' % epoch)
+            if not osp.isfile(path):
+                trainer.save_checkpoint(path)
+                logging.info('saved snapshot checkpoint %s', path)

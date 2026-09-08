@@ -19,7 +19,8 @@ class SimVP_Model(nn.Module):
                  spatio_kernel_dec=3, act_inplace=True, aft_seq_length=None,
                  simvp_direct_aft_seq=False, out_channels=None,
                  condition_dim=0, condition_film=False,
-                 condition_hidden_dim=64, **kwargs):
+                 condition_hidden_dim=64, spatio_azimuth_downsample=None,
+                 **kwargs):
         super(SimVP_Model, self).__init__()
         T, C, H, W = in_shape  # T is pre_seq_length
         self.pre_seq_length = T
@@ -34,13 +35,21 @@ class SimVP_Model(nn.Module):
         self.out_channels = (
             int(out_channels) if out_channels is not None else self.in_channels
         )
-        H, W = int(H / 2**(N_S/2)), int(W / 2**(N_S/2))  # downsample 1 / 2**(N_S/2)
+        H = int(H / 2**(N_S/2))
+        full_w = 2**(N_S/2)
+        az = full_w if spatio_azimuth_downsample is None else spatio_azimuth_downsample
+        W = int(W / az)
         act_inplace = False
+        enc_samplings = sampling_generator(
+            N_S, azimuth_downsample=spatio_azimuth_downsample)
+        dec_samplings = sampling_generator(
+            N_S, reverse=True, azimuth_downsample=spatio_azimuth_downsample)
         self.enc = Encoder(
             self.in_channels, hid_S, N_S, spatio_kernel_enc,
-            act_inplace=act_inplace,
+            act_inplace=act_inplace, samplings=enc_samplings,
         )
-        self.dec = Decoder(hid_S, self.out_channels, N_S, spatio_kernel_dec, act_inplace=act_inplace)
+        self.dec = Decoder(hid_S, self.out_channels, N_S, spatio_kernel_dec,
+                           act_inplace=act_inplace, samplings=dec_samplings)
 
         model_type = 'gsta' if model_type is None else model_type.lower()
         if model_type == 'incepu':
@@ -100,17 +109,38 @@ class SimVP_Model(nn.Module):
         return Y
 
 
-def sampling_generator(N, reverse=False):
-    samplings = [False, True] * (N // 2)
-    if reverse: return list(reversed(samplings[:N]))
-    else: return samplings[:N]
+def sampling_generator(N, reverse=False, azimuth_downsample=None):
+    """Per-layer downsampling flags.
+
+    `azimuth_downsample` selects how much the azimuthal (width) axis is reduced
+    in total.  The default reduces both axes by 2 per downsampling layer.
+    Passing 2 with N_S = 4 turns the LAST downsampling layer into a
+    stride-(2, 1) layer, so the radial axis is still reduced by 4 while the
+    azimuthal axis is reduced by only 2 -- the cell-B architecture of the frozen
+    contrast, which changes azimuthal latent resolution and nothing else.
+    """
+    samplings = ([False, True] * (N // 2))[:N]
+    if azimuth_downsample is not None:
+        full = 2 ** sum(1 for s in samplings if s)
+        if azimuth_downsample not in (full, full // 2):
+            raise ValueError(
+                "azimuth_downsample must be %d or %d for N_S=%d, got %s"
+                % (full, full // 2, N, azimuth_downsample))
+        if azimuth_downsample == full // 2:
+            last = max(i for i, s in enumerate(samplings) if s)
+            samplings = list(samplings)
+            samplings[last] = "height"
+    if reverse:
+        return list(reversed(samplings))
+    return samplings
 
 
 class Encoder(nn.Module):
     """3D Encoder for SimVP"""
 
-    def __init__(self, C_in, C_hid, N_S, spatio_kernel, act_inplace=True):
-        samplings = sampling_generator(N_S)
+    def __init__(self, C_in, C_hid, N_S, spatio_kernel, act_inplace=True,
+                 samplings=None):
+        samplings = sampling_generator(N_S) if samplings is None else samplings
         super(Encoder, self).__init__()
         self.enc = nn.Sequential(
               ConvSC(C_in, C_hid, spatio_kernel, downsampling=samplings[0],
@@ -130,8 +160,10 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     """3D Decoder for SimVP"""
 
-    def __init__(self, C_hid, C_out, N_S, spatio_kernel, act_inplace=True):
-        samplings = sampling_generator(N_S, reverse=True)
+    def __init__(self, C_hid, C_out, N_S, spatio_kernel, act_inplace=True,
+                 samplings=None):
+        samplings = (sampling_generator(N_S, reverse=True)
+                     if samplings is None else samplings)
         super(Decoder, self).__init__()
         self.dec = nn.Sequential(
             *[ConvSC(C_hid, C_hid, spatio_kernel, upsampling=s,

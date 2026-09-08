@@ -89,6 +89,15 @@ PRE = 10
 AFT = 10
 EPS = np.finfo(np.float64).tiny
 
+# 2026-09-03: the first run of this pilot aborted with "No 27-30 us rollout
+# frames".  Under fp16 autocast this checkpoint returns an all-NaN forward
+# pass -- every one of the 1996800 output values -- from both the fine and
+# the native history, so rollout() broke before producing a single frame.
+# The identical fp32 forward is finite and rolls out cleanly.  The failure is
+# an fp16 overflow inside the model, not a physical divergence, so autocast
+# is off by default and must be requested explicitly with --amp.
+AMP_ENABLED = False
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -104,6 +113,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pca-components", type=int, default=32)
     parser.add_argument("--protocol-only", action="store_true")
     parser.add_argument("--phase", choices=("all", "a", "bc"), default="all")
+    parser.add_argument(
+        "--amp",
+        action="store_true",
+        help="Re-enable fp16 autocast. Known to return all-NaN for this "
+             "checkpoint; kept only so the failure can be reproduced.",
+    )
     return parser.parse_args()
 
 
@@ -348,7 +363,7 @@ def rollout(model: SimVP_Model, history: np.ndarray, steps: int, device: torch.d
         raise ValueError(f"Bad rollout history {current.shape}")
     pieces = []
     finite = True
-    with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
+    with torch.autocast("cuda", enabled=AMP_ENABLED and device.type == "cuda"):
         while sum(len(piece) for piece in pieces) < steps:
             tensor = torch.from_numpy(current[None]).to(device)
             prediction = model(tensor)[0].float().cpu().numpy()
@@ -382,8 +397,14 @@ def teacher_forced_direct10(
         if input_start < 0:
             continue
         tensor = torch.from_numpy(sequence[input_start:int(target_start)][None]).to(device)
-        with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
+        with torch.autocast("cuda", enabled=AMP_ENABLED and device.type == "cuda"):
             prediction = model(tensor)[0].float().cpu().numpy()
+        if not np.all(np.isfinite(prediction)):
+            # The first run of this pilot produced 20 all-NaN teacher-forced
+            # blocks without complaint because nothing checked here.
+            raise RuntimeError(
+                f"Non-finite teacher-forced prediction at target {int(target_start)}"
+            )
         outputs.append(prediction)
         targets.append(np.arange(target_start, target_start + AFT, dtype=np.int64))
         print(f"[A teacher-forced] {len(outputs)}/{len(target_starts)}", flush=True)
@@ -663,7 +684,7 @@ def encode_frames(
     for start in range(0, len(frames), batch_size):
         stop = min(start + batch_size, len(frames))
         tensor = torch.from_numpy(np.asarray(frames[start:stop], dtype=np.float32)).to(device)
-        with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
+        with torch.autocast("cuda", enabled=AMP_ENABLED and device.type == "cuda"):
             encoded, _ = model.enc(tensor)
             pooled = F.adaptive_avg_pool2d(encoded, (pool_size, pool_size))
         pieces.append(pooled.float().cpu().numpy().reshape(stop - start, -1))
@@ -1030,7 +1051,9 @@ def compact_summary(a: dict | None, b: dict | None, c: dict | None) -> dict:
 
 
 def main() -> None:
+    global AMP_ENABLED
     args = parse_args()
+    AMP_ENABLED = bool(args.amp)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_json(args.output_dir / "protocol.json", protocol(args))
     if args.protocol_only:

@@ -26,7 +26,16 @@ class BasicConv2d(nn.Module):
                  act_inplace=True):
         super(BasicConv2d, self).__init__()
         self.act_norm = act_norm
-        if upsampling is True:
+        if upsampling == "height":
+            # Anisotropic upsampling by 2 along the height (radial) axis only,
+            # the mirror of a stride-(2,1) downsample.  PixelShuffle(2) would
+            # scale both axes, so the shuffle is done explicitly.
+            self.conv = nn.Sequential(*[
+                nn.Conv2d(in_channels, out_channels*2, kernel_size=kernel_size,
+                          stride=1, padding=padding, dilation=dilation),
+                PixelShuffleHeight()
+            ])
+        elif upsampling is True:
             self.conv = nn.Sequential(*[
                 nn.Conv2d(in_channels, out_channels*4, kernel_size=kernel_size,
                           stride=1, padding=padding, dilation=dilation),
@@ -54,6 +63,16 @@ class BasicConv2d(nn.Module):
         return y
 
 
+class PixelShuffleHeight(nn.Module):
+    """PixelShuffle by a factor of 2 along the height axis only."""
+
+    def forward(self, x):
+        b, c, h, w = x.shape
+        x = x.view(b, c // 2, 2, h, w)
+        x = x.permute(0, 1, 3, 2, 4).contiguous()
+        return x.view(b, c // 2, h * 2, w)
+
+
 class ConvSC(nn.Module):
 
     def __init__(self,
@@ -66,8 +85,16 @@ class ConvSC(nn.Module):
                  act_inplace=True):
         super(ConvSC, self).__init__()
 
-        stride = 2 if downsampling is True else 1
-        padding = (kernel_size - stride + 1) // 2
+        # `downsampling` may be False, True (stride 2 both axes) or the string
+        # "height" (stride (2, 1): radial only, azimuthal resolution kept).
+        if downsampling == "height":
+            stride = (2, 1)
+        elif downsampling is True:
+            stride = 2
+        else:
+            stride = 1
+        padding = (kernel_size - (stride[0] if isinstance(stride, tuple)
+                                  else stride) + 1) // 2
 
         self.conv = BasicConv2d(C_in, C_out, kernel_size=kernel_size, stride=stride,
                                 upsampling=upsampling, padding=padding,

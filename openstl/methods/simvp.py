@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 import torch
 from openstl.models import SimVP_Model
+from openstl.models.simvp_factory import build_simvp_model
 from .base_method import Base_method
 from .pepapic_spectral_loss import PEPAPICSpectralLoss
 
@@ -27,7 +28,7 @@ class SimVP(Base_method):
         self._setup_pepapic_spectral_loss()
 
     def _build_model(self, **args):
-        return SimVP_Model(**args)
+        return build_simvp_model(args)
 
     def _setup_pepapic_poisson_loss(self):
         mode = str(getattr(self.hparams, "pepapic_poisson_loss", "none")).lower()
@@ -133,6 +134,12 @@ class SimVP(Base_method):
         self.pepapic_transport_weight = float(
             getattr(self.hparams, "pepapic_transport_lambda", 0.0)
         )
+        self.pepapic_spectral_power_weight = float(
+            getattr(self.hparams, "pepapic_spectral_power_lambda", 0.0)
+        )
+        self.pepapic_spectral_crossspec_weight = float(
+            getattr(self.hparams, "pepapic_spectral_crossspec_lambda", 0.0)
+        )
         self.pepapic_spectral_enabled = (
             mode not in ("none", "off", "false", "0")
             and max(
@@ -141,6 +148,8 @@ class SimVP(Base_method):
                 self.pepapic_spectral_cross_weight,
                 self.pepapic_spectral_complex_weight,
                 self.pepapic_transport_weight,
+                self.pepapic_spectral_power_weight,
+                self.pepapic_spectral_crossspec_weight,
             )
             > 0.0
         )
@@ -173,6 +182,15 @@ class SimVP(Base_method):
             ),
             coordinate_system=str(
                 getattr(self.hparams, "pepapic_spectral_coordinate_system", "fixed_n")
+            ),
+            radial_reduction=str(
+                getattr(self.hparams, "pepapic_spectral_radial_reduction", "field_mean")
+            ),
+            power_eps_relative=float(
+                getattr(self.hparams, "pepapic_spectral_power_eps_relative", 1e-8)
+            ),
+            cross_mask_kappa=float(
+                getattr(self.hparams, "pepapic_spectral_cross_mask_kappa", 1e-3)
             ),
             q_min=float(getattr(self.hparams, "pepapic_spectral_q_min", 0.30)),
             q_max=float(getattr(self.hparams, "pepapic_spectral_q_max", 1.50)),
@@ -239,6 +257,8 @@ class SimVP(Base_method):
     def validation_step(self, batch, batch_idx):
         batch_x, batch_y = batch
         pred_y = self(batch_x, batch_y)
+        if getattr(self, "_radaz_validation", None) is not None:
+            self._radaz_validation.update(batch_x, pred_y.detach(), batch_y)
         loss, data_loss, poisson_loss, efield_loss, spectral_losses = self._total_loss(
             pred_y, batch_y, batch_x=batch_x
         )
@@ -260,6 +280,29 @@ class SimVP(Base_method):
                     prog_bar=False,
                 )
         return loss
+
+    def on_validation_epoch_start(self):
+        self._radaz_validation = None
+        if (getattr(self.hparams, "radaz_validation_diagnostics", False)
+                and not self.trainer.sanity_checking):
+            from .radaz_validation import SourceValidationDiagnostics
+            self._radaz_validation = SourceValidationDiagnostics(self.hparams.data_root, self.device)
+
+    def on_validation_epoch_end(self):
+        if getattr(self, "_radaz_validation", None) is None:
+            return
+        result = self._radaz_validation.finalize()
+        for name in ("balanced_mse_mean", "balanced_mse_median", "balanced_mse_worst"):
+            self.log("val_" + name, result[name], on_step=False, on_epoch=True)
+        result["epoch_index"] = int(self.current_epoch)
+        result["completed_epochs"] = int(self.current_epoch) + 1
+        result["translator_norm"] = getattr(self.hparams, "translator_norm", "batch")
+        if self.trainer.is_global_zero:
+            path = Path(self.hparams.save_dir) / "source_validation_diagnostics.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(result, allow_nan=False) + "\n")
+        self._radaz_validation = None
 
     def _total_loss(self, pred_y, batch_y, batch_x=None):
         data_loss = self.criterion(pred_y, batch_y)
@@ -289,6 +332,10 @@ class SimVP(Base_method):
                 * spectral_losses.get("complex_mode", 0.0)
                 + self.pepapic_transport_weight
                 * spectral_losses.get("transport", 0.0)
+                + self.pepapic_spectral_power_weight
+                * spectral_losses.get("power", 0.0)
+                + self.pepapic_spectral_crossspec_weight
+                * spectral_losses.get("cross_spectrum", 0.0)
             )
         return total, data_loss, poisson_loss, efield_loss, spectral_losses
 

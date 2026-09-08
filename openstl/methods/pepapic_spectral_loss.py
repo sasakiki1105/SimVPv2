@@ -26,6 +26,9 @@ class PEPAPICSpectralLoss(nn.Module):
         q_max=1.50,
         q_bins=49,
         eps=1e-8,
+        power_eps_relative=1e-8,
+        cross_mask_kappa=1e-3,
+        radial_reduction="field_mean",
     ):
         super().__init__()
         data_root = Path(str(data_root))
@@ -50,7 +53,21 @@ class PEPAPICSpectralLoss(nn.Module):
         self.max_mode = min(int(max_mode), self.valid_width // 2)
         self.radial_bands = int(radial_bands)
         self.coordinate_system = str(coordinate_system).lower()
+        # Historical v2 averages fields before their products (a mean-field
+        # proxy). v3 averages LOCAL powers/cross products within radial bands.
+        self.radial_reduction = str(radial_reduction)
+        if self.radial_reduction not in ("field_mean", "local_product"):
+            raise ValueError("radial_reduction must be field_mean or local_product")
+        if self.radial_reduction == "local_product" and self.coordinate_system not in (
+            "integer_power_cross", "power_cross"
+        ):
+            raise ValueError("local_product requires integer_power_cross")
         self.eps = float(eps)
+        # v2 (integer_power_cross) constants.  Both are relative to the true
+        # peak power of the batch, so they are scale free, and both are fixed
+        # a priori -- never tuned on a holdout or test condition.
+        self.power_eps_relative = float(power_eps_relative)
+        self.cross_mask_kappa = float(cross_mask_kappa)
         if self.max_mode < 1:
             raise ValueError("max_mode must include at least azimuthal mode n=1")
         if self.radial_bands < 1:
@@ -133,7 +150,9 @@ class PEPAPICSpectralLoss(nn.Module):
                 torch.linspace(float(q_min), float(q_max), int(q_bins)),
                 persistent=False,
             )
-        elif self.coordinate_system not in ("fixed", "fixed_n", "n"):
+        elif self.coordinate_system not in (
+            "fixed", "fixed_n", "n", "integer_power_cross", "power_cross"
+        ):
             raise ValueError(
                 f"Unknown spectral coordinate_system={coordinate_system}"
             )
@@ -439,7 +458,8 @@ class PEPAPICSpectralLoss(nn.Module):
 
         fields = torch.stack((phi, electron_den, electric_y), dim=2)
         pool = self.radial_band_pool[:, : self.valid_height].to(dtype=fields.dtype)
-        band_fields = torch.einsum("rh,btfhw->btfrw", pool, fields)
+        band_fields = (fields if self.radial_reduction == "local_product" else
+                       torch.einsum("rh,btfhw->btfrw", pool, fields))
         band_fluctuations = band_fields - torch.mean(
             band_fields, dim=-1, keepdim=True
         )
@@ -607,7 +627,81 @@ class PEPAPICSpectralLoss(nn.Module):
         )
         return (torch.sum(error * mask) / denominator).to(dtype=pred_coeff.dtype)
 
+    def _ensemble_spectra(self, coefficients):
+        """[B,T,F,R,N,2] -> per-(B,R,N) power of ne and Ey and their cross
+        spectrum, averaged over the T frames of the sample."""
+        real = coefficients[..., 0].to(torch.float64)
+        imag = coefficients[..., 1].to(torch.float64)
+        ne_r, ne_i = real[:, :, 1], imag[:, :, 1]
+        ey_r, ey_i = real[:, :, 2], imag[:, :, 2]
+        power_n = torch.mean(ne_r * ne_r + ne_i * ne_i, dim=1)
+        power_e = torch.mean(ey_r * ey_r + ey_i * ey_i, dim=1)
+        cross_r = torch.mean(ne_r * ey_r + ne_i * ey_i, dim=1)
+        cross_i = torch.mean(ne_i * ey_r - ne_r * ey_i, dim=1)
+        if self.radial_reduction == "local_product":
+            pool = self.radial_band_pool[:, :self.valid_height].double()
+            power_n, power_e, cross_r, cross_i = (
+                torch.einsum("rh,bhn->brn", pool, value)
+                for value in (power_n, power_e, cross_r, cross_i)
+            )
+        return power_n, power_e, cross_r, cross_i
+
+    def _power_loss(self, pred_coeff, true_coeff):
+        """Log-power loss on fixed integer azimuthal modes.
+
+        Ordinary relative error explodes where the true power vanishes, which
+        is exactly the band where the models hallucinate power; the log form
+        with a peak-relative floor penalises that without dividing by zero.
+        No q interpolation is involved, so no power is lost to cancellation
+        between adjacent modes.
+        """
+        pn_p, pe_p, _, _ = self._ensemble_spectra(pred_coeff)
+        pn_t, pe_t, _, _ = self._ensemble_spectra(true_coeff)
+        total = 0.0
+        for predicted, truth in ((pn_p, pn_t), (pe_p, pe_t)):
+            floor = self.power_eps_relative * torch.amax(
+                truth, dim=-1, keepdim=True).clamp(min=1e-300)
+            difference = torch.log(predicted + floor) - torch.log(truth + floor)
+            total = total + torch.mean(difference * difference)
+        return (0.5 * total).to(dtype=pred_coeff.dtype)
+
+    def _cross_spectrum_loss(self, pred_coeff, true_coeff):
+        """Normalised ne-Ey cross spectrum, masked to modes that carry power.
+
+        C = <N E*> / sqrt(<|N|^2><|E|^2>) is invariant under a common azimuthal
+        translation, so it targets the transport-relevant relative phase
+        without asking the model to match an absolute wave position.  Where the
+        true power is negligible its argument is noise, so those modes are
+        excluded by a mask built from the TRUE spectra with a fixed relative
+        threshold.
+        """
+        pn_p, pe_p, cr_p, ci_p = self._ensemble_spectra(pred_coeff)
+        pn_t, pe_t, cr_t, ci_t = self._ensemble_spectra(true_coeff)
+        # Clamp BEFORE sqrt: sqrt(0)'s infinite derivative otherwise produces
+        # NaN gradients even if its output is clamped afterwards.
+        denominator_p = torch.sqrt((pn_p * pe_p).clamp(min=1e-300))
+        denominator_t = torch.sqrt((pn_t * pe_t).clamp(min=1e-300))
+        # Threshold on the geometric mean, not the product: the product
+        # squares the dynamic range, which would make a given kappa several
+        # decades stricter than intended and leave the term inert for the
+        # sharply peaked low-n0 spectra.
+        product = torch.sqrt(pn_t * pe_t)
+        threshold = self.cross_mask_kappa * torch.amax(
+            product, dim=-1, keepdim=True)
+        mask = (product > threshold).to(torch.float64)
+        error = ((cr_p / denominator_p - cr_t / denominator_t) ** 2
+                 + (ci_p / denominator_p - ci_t / denominator_t) ** 2)
+        return (torch.sum(error * mask)
+                / torch.clamp(mask.sum(), min=1.0)).to(dtype=pred_coeff.dtype)
+
     def forward(self, pred_y, true_y, batch_x=None):
+        if self.coordinate_system in ("integer_power_cross", "power_cross"):
+            pred_coeff = self._band_coefficients(pred_y, physical_units=False)
+            true_coeff = self._band_coefficients(true_y, physical_units=False)
+            return {
+                "power": self._power_loss(pred_coeff, true_coeff),
+                "cross_spectrum": self._cross_spectrum_loss(pred_coeff, true_coeff),
+            }
         if self.coordinate_system in ("q", "q_normalized", "q_complex_transport"):
             pred_coeff = self._band_coefficients(pred_y, physical_units=False)
             true_coeff = self._band_coefficients(true_y, physical_units=False)
