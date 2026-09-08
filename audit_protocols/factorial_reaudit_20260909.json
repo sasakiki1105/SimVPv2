@@ -1,0 +1,197 @@
+{
+  "created_utc": "2026-09-08T16:41:22.344332+00:00",
+  "status": "exploratory, previously inspected data",
+  "metrics_version": "radaz-local-signed-time-v3.1",
+  "files_sha256": {
+    "evaluate_radaz_factorial_reaudit.py": "9427553815900fd4e313c2da401d92ee94d11e19cfe16156bc66e9f46184f75b",
+    "audit_protocols\\factorial_reaudit_20260909.md": "d4fe27e8c041e81328c3c7d87f7d273eddd25b12a47cb01473798cf20918920a",
+    "workdirs\\2D_RadAz\\radaz_conditioned_factorial_manifests\\radaz_axis_factorial_manifest.json": "7a1ddcc3c4c52d7dcde45124d52eaab22d81a3d8ffdc0f7c4742b8655f7fa4f8",
+    "radaz_metrics_v3.py": "b375a163803239022a5a9798f00fc1d570756f2ad6442056088b674ed96e022f",
+    "evaluate_radaz_conditioned_factorial.py": "3e55f1b551dcfaff2ea71010c4958412328282e401fceea471763cb49fc02d9d",
+    "evaluate_radaz_corrected_A.py": "e50214642b3117d0cadfd1c5597f6d905019d2ebc04e4052c4e6afcab6cf1f18",
+    "analyze_radaz_nextstep_baselines.py": "d2fcafd278d7e4431416afb0ea35f62e67c64f673e1cf48d11c4e71c29f19576",
+    "openstl\\__init__.py": "ceae9782d9af0e52a4f9c6243114d1569703bb8aa5fddb9c4d77af3dffb82fa1",
+    "openstl\\api\\__init__.py": "48f2d39730aa2ab3c196fb4ce115547a66ce85f90063e0cc866bab323bd70264",
+    "openstl\\api\\exp.py": "b4f482014fff7b701f93c647f6c7c05a0efff8e66480875528aa3a3f2a9c977d",
+    "openstl\\core\\__init__.py": "0fd357a0047fe5b5c788fcd56b5062cf55cd182d88778d5c7af05083c2bb5bcb",
+    "openstl\\core\\drop_scheduler.py": "ef37bea44b0ff9a244a9cb9452723b9c54321f10c7b977adf4118ab6fe57941f",
+    "openstl\\core\\metrics.py": "fef343e548dfda66c98af782afaf4bf06d3b0ad2b3000259c78782404a4cc9a9",
+    "openstl\\core\\optim_constant.py": "8aaf6b8d84b4d4d3e37ebd333b0efa56bab7339c428a91850d1a8f6b96c359d7",
+    "openstl\\core\\optim_scheduler.py": "fcade231356ffcac3cfe8b188a6469fbf4512aa32c2be7398a36b7714c4cd4d1",
+    "openstl\\datasets\\__init__.py": "07af61f654acda224ee5cdad2f6bd24a2170f8b07df7e1cd40339d1d4693d7f7",
+    "openstl\\datasets\\base_data.py": "eba353c9e4bd8dc7bd702b2af1b002ece3de415ddfb02349f4886309170110a3",
+    "openstl\\datasets\\dataloader.py": "6f91bfd8b35a88b714ff3c231d0ea8e9a27bf0a44a8f8a25ef37ecfaf99cbba9",
+    "openstl\\datasets\\dataloader_bair.py": "46348b76af73c68ffee67dd3ea1bfe54de232cdd652ff769a264704d58a6634e",
+    "openstl\\datasets\\dataloader_human.py": "46951a4e723cab234cb6176e06a78e7959e16c791329e73eb39c9ea152e9292c",
+    "openstl\\datasets\\dataloader_kinetics.py": "9d7874104ef39591b0c94cfaa30b4141a5b4b25dd58e78c5712fbc4609a3551c",
+    "openstl\\datasets\\dataloader_kitticaltech.py": "bee2b56bd928fef3c051e33b22f9cf653d7fd8ae564ce15127d1032c6378304f",
+    "openstl\\datasets\\dataloader_kth.py": "21db12d0e3ff99086e2f8328bab8771f882e494efdf2993f199703ce9c480983",
+    "openstl\\datasets\\dataloader_moving_mnist.py": "ba1e972b114bcd621b247ecca67b2db7cdd89306bd9604f6c08c739a89d306d3",
+    "openstl\\datasets\\dataloader_noisy_moving_mnist.py": "b6935446ed1d908f62514b5f4b71ccad5fda3bd0c3056344de4cd5a2367b0a71",
+    "openstl\\datasets\\dataloader_pepapic_h5.py": "51cf54d5b26d97b5a339d94886c10a9cfcbb8e080efb5cd51c3f11c330e9bf39",
+    "openstl\\datasets\\dataloader_sevir.py": "e84b2a20c47f96ef298166e3cbba233a46fd7087bba4e45e19f03fdf11523fa8",
+    "openstl\\datasets\\dataloader_taxibj.py": "3aae9c1768225088cbe4ab4e1878cbefdbe32055446062995d6b5fd50d6cb1d4",
+    "openstl\\datasets\\dataloader_weather.py": "8324223597fe34bf2d2b089e18b6ba993a3534d717738443481a710a1f77d2af",
+    "openstl\\datasets\\dataset_constant.py": "62c81ef9ed8dd9edc1cf046302f9d094f2dddc0b2dbbbbb6431eaf8711fdc0af",
+    "openstl\\datasets\\pipelines\\__init__.py": "008ad2a035c9e5a75c17a9f4b6e51e9f20bf419d72fca769286566da9b3e758e",
+    "openstl\\datasets\\pipelines\\transforms.py": "95ecbe1b443ea39e0d70e5f04efa04aa7543069b8be9b4f47982637e7389d126",
+    "openstl\\datasets\\utils.py": "48212c9682dad1fb121578732df3e6b96e2742d9c686de5d4426dbb334e3eb03",
+    "openstl\\methods\\__init__.py": "0912b95d8800fe94308ca6cd0356f6ac3581ab9e4274df5080f81d17191b468f",
+    "openstl\\methods\\base_method.py": "45c641b6a70dda133ff985e7473c8e5b4ac6622b30e6c5867ed3f4dcb83143ca",
+    "openstl\\methods\\convlstm.py": "e8ec0d3322cf381fc7cf068f5b13bde58bc39e599b0c9cbfdfd02265eeb46bcc",
+    "openstl\\methods\\e3dlstm.py": "98bf35eeff8cf7ab7c9db4b265810abfb30b527ac8f50fb54d08a4db64f7b9b3",
+    "openstl\\methods\\mau.py": "922cc6134bba8127fe73b0819527fd3a3b0be0446b0190fa76f0a0ca4cfd3eb0",
+    "openstl\\methods\\mim.py": "a8c1dba4d06235ac4a079cb7438be5cf41df2db8d0f5d86fa4c08f413e8ade48",
+    "openstl\\methods\\mmvp.py": "3644792750c5e16bb1cb4c79a4c91b775056f850bcb27f985918bd8aa13a82a7",
+    "openstl\\methods\\pepapic_spectral_loss.py": "f2439835ea91fe661827361860c8fab584d6722e5eaa15a9dea0b575d88b732b",
+    "openstl\\methods\\phydnet.py": "5e41b70303de9b7fb5a6df0fc51887ad56f2005ce93d1e4264e169f57a24810a",
+    "openstl\\methods\\predrnn.py": "3f08a4df879bc6aabdeec2a2257029ec71dcebc5e81c1b3138719239d97ffe6c",
+    "openstl\\methods\\predrnnpp.py": "c592274f59fd2f66c1cd7dbb808bd030d39d2fdb7aeb9eb95b9a8b6168821b84",
+    "openstl\\methods\\predrnnv2.py": "abf73fbae56dd903e5f39bec4e74e4e21cbc928d03fae6ccfddb389788218071",
+    "openstl\\methods\\radaz_validation.py": "2edeb254a69edb8f9af6cfba5469ce30d9bf4e4deaf04701e207c2487596343d",
+    "openstl\\methods\\simvp.py": "e4ee49b2ccf669b74d3e5b20999758959c41679cdfd188dcd02c461a96d75983",
+    "openstl\\methods\\swinlstm.py": "b5fe700337a335b2c104a8a912b71b95e983b583fd2ca95abd4f03f8ea18ca84",
+    "openstl\\methods\\tau.py": "ecd7baf47f6ded68a6ad9793f3952a8e1abd62ff1e45d29a562e825d5acbbc2d",
+    "openstl\\methods\\wast.py": "cb79474edb00fa9450a50885bfc8ab29d01e054148ca2a6ece500c8690bc6731",
+    "openstl\\models\\__init__.py": "ef344484783ee9c1d1eceed1a057b6bb5d7d3968a962aca914ff7820c52ea731",
+    "openstl\\models\\convlstm_model.py": "53ec4d107d962df9689179b3f403a433e89a5517012adb854d08b2d0b5de52e0",
+    "openstl\\models\\e3dlstm_model.py": "606a19469dde525301bc995518eef68b85b9dde5c995bbf6823736b9bc1b3e0f",
+    "openstl\\models\\mau_model.py": "d03905e8bde8c2ef15387b19c43efa3517db1b11f8aae9b1e2fbe194e62968c1",
+    "openstl\\models\\mim_model.py": "255be42ea36a741f495be5cc21c306d03df2bcea482eb3de65cefee6c2976ea7",
+    "openstl\\models\\mmvp_model.py": "e59e294573bb0948bc788df82bcb64cc117fd58019aa55c5cb716d7c15412778",
+    "openstl\\models\\phydnet_model.py": "a2ca0c4fc6ce0ae07b666bf43dbca5c1f42bf084399bd7a6ee050b35044ec390",
+    "openstl\\models\\predrnn_model.py": "ffdd78289bba57b65ca3ae744801972f106b372d51bc05515499f79a70210d41",
+    "openstl\\models\\predrnnpp_model.py": "2e48b6826411a24c6fa67db1b909fb28998c1a12364cf9f5361901efdb2a71f7",
+    "openstl\\models\\predrnnv2_model.py": "6492f40e7b8322c1ef6c8a415016b70d36e9c8e69e0ae518d41d14f513eac440",
+    "openstl\\models\\simvp_factory.py": "37ffe2a505c66b3c54ef3ed7ca7a4f8c1f54351bfc03355a50fe16cc1e5684fa",
+    "openstl\\models\\simvp_model.py": "b610c4002f551ffc8c6bdf29462c1664ccddc53d87548cf189077ea6081a40a3",
+    "openstl\\models\\swinlstm_model.py": "8c2aecf87a03dceed1fb60a19e3d0440525bf19a09243cf058ee9ac7bca8b3ff",
+    "openstl\\modules\\__init__.py": "16ee7f5e3faaa69d5490c0f3ede18f2d581a1b6845e1981041be1e4c9d95f447",
+    "openstl\\modules\\convlstm_modules.py": "3112b408a896fde805b41b809a717ec405110ac4d4e15550140ec425942609a8",
+    "openstl\\modules\\e3dlstm_modules.py": "348fd267638575f9154dc678bd9d53d31e783b5beb65d13702f2eacaec8a0753",
+    "openstl\\modules\\layers\\__init__.py": "0c416b12bbcec43664f3a4d80cd606ab813c2d06d3c17118b5d7b773864e7f48",
+    "openstl\\modules\\layers\\hornet.py": "cb3b5cf35fbdbc1446a9c6896acb7c799aa8786dfbec5f7b6929dbbc26690504",
+    "openstl\\modules\\layers\\moganet.py": "a902183c93bf5d04fc2be21eb93aa338c02a1b7747080ceb225df35d447abbc9",
+    "openstl\\modules\\layers\\poolformer.py": "940af07434918418dd2b7b44f063cca85cca12b115c98de6452a8c7a8e015038",
+    "openstl\\modules\\layers\\uniformer.py": "b6aa2d3d1f4ccca437999878210dde6723674915b4a36bcd0f27811579e72684",
+    "openstl\\modules\\layers\\van.py": "c6c413e906d2d405cfc3d8b9ca48ed4ad4d8819e190e66c2ffd3c9220aa96535",
+    "openstl\\modules\\mau_modules.py": "c88d69bc2afd9b7ace1390ab7cded004462fda302a26771cf8197a09b71b5acf",
+    "openstl\\modules\\mim_modules.py": "90e81b52c95e3b43ebbef824b9e08a9d151dec393da59b995466940a578108ed",
+    "openstl\\modules\\mmvp_modules.py": "a283cf9f2b1f08584cdd411953558630f7b3eee1ca0ebeb2d4cb28b1e85f6385",
+    "openstl\\modules\\phydnet_modules.py": "6d9ce5f2082d778bb2ce6332b64f030c6684b9eb8989bd255c5442f7f8e77973",
+    "openstl\\modules\\predrnn_modules.py": "82be82b3c8b1c3b3815be7748eaf4588612070b9ee11c4dd9f0d82a50ae2c224",
+    "openstl\\modules\\predrnnpp_modules.py": "0f3dcf49965be4a88959bf672bd0f13f73aff1721972cabb6efcc6c14886a363",
+    "openstl\\modules\\predrnnv2_modules.py": "41921908ce15f298c91e2cc9ee4ca7e18267d0bc75759ec0aa6963c1d9fe0602",
+    "openstl\\modules\\simvp_modules.py": "018bdd08137c26de8cb5bb43a2722b7b16625a3f504156a8f231a11417345889",
+    "openstl\\modules\\swinlstm_modules.py": "9fa4269e91bfeba80171ebdeadc374e37251b079859911aa37637dd12d3b186f",
+    "openstl\\modules\\wast_modules.py": "79665bb08212efac9e9686d52ce836ceec0adfecabeed4ed344067b01dc7e5ee",
+    "openstl\\utils\\__init__.py": "79309d9101f332a6c178100bbc1a806ffeb59137135d22bae9557fb19736994b",
+    "openstl\\utils\\callbacks.py": "0fbcf461434f6e80714bf4c05faf8312cca7dd1c417b5bd279ac56ff2efe7462",
+    "openstl\\utils\\config_utils.py": "c647f41b48c2338b205baf93bcb0d5517d9fcecd04c974c30ae7cdb81c046f7a",
+    "openstl\\utils\\main_utils.py": "4cde71d900b195d3bb5f2e8b4c2e0d10200e77b229d974e5f1122ca356e77a22",
+    "openstl\\utils\\mmvp_utils.py": "d17c187543f87a179066a594f7b78eee3397f630c7f668647d81a5ca7abebf87",
+    "openstl\\utils\\parser.py": "53ac59db93308c91f9881014d79f1bb1e1703697061b671c0eec3960e54a57b0",
+    "openstl\\utils\\prednet_utils.py": "3ce35fe237fe2a1e0dc63e02be49f2ba49e0fff4012d17bb209e22abfe6827a7",
+    "openstl\\utils\\predrnn_utils.py": "b4a039f7f859b26c72a819df523d340ae4ba6c718d135b8a853b4cde109adfd0",
+    "openstl\\utils\\visualization.py": "1c051650e0ddee2ae66d6a5099cf226f698bf2614d280099203529fbfe6f63b2",
+    "openstl\\version.py": "9f160f5b5ba2741c6d4363a388f4cebb1d7dfcc580d8386d79625c901279cc38",
+    "configs\\custom\\pepapic\\SimVP_gSTA_radaz_factorial_UD_60ep.py": "de2fb243a4f9deb81e2ecbea7176ebef600f65f37555c77c68945e67d2b4d6ac",
+    "workdirs\\2D_RadAz\\radaz_axis_factorial_UD_direct10_bs1_60ep\\checkpoints\\last.ckpt": "2559832a994e95944d941a16eb0fad6b9f069ec340896d015654a92681044f30",
+    "configs\\custom\\pepapic\\SimVP_gSTA_radaz_factorial_CD_60ep.py": "cfe712bcd31692b5aa132b06a4c1a549ee61ff7553c1709e96f2a619e274e1cb",
+    "workdirs\\2D_RadAz\\radaz_axis_factorial_CD_film_direct10_bs1_60ep\\checkpoints\\last.ckpt": "4e84a761435252d5a18e2a3908f22170bf67a17ae91634b954b4f68bd100e201",
+    "configs\\custom\\pepapic\\SimVP_gSTA_radaz_factorial_UP_60ep.py": "85e356e04591885f7bbdef3531b3f9e09a7b93d0bc5325e8a6129dc284e9a8d4",
+    "workdirs\\2D_RadAz\\radaz_axis_factorial_UP_qtransport_direct10_bs1_60ep\\checkpoints\\last.ckpt": "47e0fc62bf0c6a0314527101f6d880e91d2ee05889736141bbbbc43c7610b587",
+    "configs\\custom\\pepapic\\SimVP_gSTA_radaz_factorial_CP_60ep.py": "47317a857abc6c4b380f560e7822b5bea3ad66929d71b6245ce1d66034588e56",
+    "workdirs\\2D_RadAz\\radaz_axis_factorial_CP_film_qtransport_direct10_bs1_60ep\\checkpoints\\last.ckpt": "c35d17112cb71ba2f8b94a730b45c8fc11e70b38ed3e89c23e5466c09df9305c",
+    "configs\\custom\\pepapic\\SimVP_gSTA_radaz_factorial_UPv2_60ep.py": "2c928687c566a986d3bcb57e38a7a0ec86fedbd36d6bd5576ef68a0417c0ad8a",
+    "workdirs\\2D_RadAz\\radaz_axis_factorial_UPv2_powercross_direct10_bs1_60ep\\checkpoints\\last.ckpt": "b913bd5bdd4cad54d7f752e2886931dc3d497cf05ef9135be3fd51e843db2404"
+  },
+  "fields": {
+    "E10_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez10kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez10kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1784699250705485000,
+      "role": "source"
+    },
+    "E20_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez20kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez20kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1784830801494594500,
+      "role": "source"
+    },
+    "E30_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez30kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez30kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1784832876381004900,
+      "role": "source"
+    },
+    "E40_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez40kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez40kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1785193035463045200,
+      "role": "source"
+    },
+    "E10_B10": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx10mT_Ez10kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx10mT_Ez10kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1785013963652153800,
+      "role": "source"
+    },
+    "E10_B30": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx30mT_Ez10kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx30mT_Ez10kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942080,
+      "mtime_ns": 1787437528055334700,
+      "role": "source"
+    },
+    "E22.5_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez22.5kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez22.5kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1785967333062621800,
+      "role": "axis_holdout"
+    },
+    "E25_B20": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx20mT_Ez25kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx20mT_Ez25kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1785516503309011600,
+      "role": "axis_holdout"
+    },
+    "E10_B15": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx15mT_Ez10kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx15mT_Ez10kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 15862942592,
+      "mtime_ns": 1785306909333516100,
+      "role": "axis_holdout"
+    },
+    "E10_B25": {
+      "path": "C:\\Users\\astro\\research\\research_results\\2D_RadAz\\PEPAPIC\\2D_Landmark\\2D_RadAz_Xe1p_Bx25mT_Ez10kVm_dt15ps_out15ns\\2D_RadAz_Xe1p_Bx25mT_Ez10kVm_dt15ps_out15ns\\analysis_fields_uncompressed.h5",
+      "size": 21142268196,
+      "mtime_ns": 1787433656396140300,
+      "role": "axis_holdout"
+    }
+  },
+  "models": [
+    "U-D",
+    "C-D",
+    "U-P",
+    "C-P",
+    "U-Pv2"
+  ],
+  "policies": [
+    "input",
+    "running"
+  ],
+  "splits": {
+    "source_validation": [
+      1600,
+      1800
+    ],
+    "source_test": [
+      1800,
+      2000
+    ],
+    "holdout_test": [
+      1800,
+      2000
+    ]
+  },
+  "device": "cpu"
+}
