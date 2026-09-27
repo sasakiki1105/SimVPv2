@@ -1,0 +1,125 @@
+{
+  "status": "frozen_before_training",
+  "version": "radaz_e8_20260927",
+  "created_utc": "2026-09-27T12:39:56.616299+00:00",
+  "parent_bc_bundle_sha256": "6a0e638f769841639086b8219df1c03214958794b428bdf421d5604bd37090b3",
+  "manifest": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_paired_pilot_v2\\source_manifest.json",
+  "samples_per_epoch": 9486,
+  "train_sample_map_sha256": "6b97e51bd3d502edda65f02b716a3c26a66eaf9be1013020df1fafdac456925f",
+  "epochs": 10,
+  "epoch_offset": 60,
+  "lr": 0.0001,
+  "sched": "step (constant for the run)",
+  "cross_max_mode": 32,
+  "cross_mask_kappa": 0.001,
+  "cross_fraction": 0.1,
+  "lambda": {
+    "lambda_xt": 1.0913062395905468e-05,
+    "lambda_xa": 2.346645824712962e-05
+  },
+  "calibration_sha256": "afe1a754e7b66bcff537d7d31200c4c74e99c06c1aafebced2e55d394af48085",
+  "jobs": {
+    "CTRL42": {
+      "arm": "CTRL",
+      "seed": 42,
+      "time_resolved": null,
+      "lambda_key": null,
+      "ex_name": "radaz_e8_B_CTRL_seed42_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_CTRL_seed42_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed42_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "ea520eae6a615888b04c992fdde101323ce307501b58de0aac0fc08205e6ecd0",
+      "source_job": "B42"
+    },
+    "XT42": {
+      "arm": "XT",
+      "seed": 42,
+      "time_resolved": true,
+      "lambda_key": "lambda_xt",
+      "ex_name": "radaz_e8_B_XT_seed42_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_XT_seed42_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed42_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "ea520eae6a615888b04c992fdde101323ce307501b58de0aac0fc08205e6ecd0",
+      "source_job": "B42"
+    },
+    "XA42": {
+      "arm": "XA",
+      "seed": 42,
+      "time_resolved": false,
+      "lambda_key": "lambda_xa",
+      "ex_name": "radaz_e8_B_XA_seed42_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_XA_seed42_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed42_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "ea520eae6a615888b04c992fdde101323ce307501b58de0aac0fc08205e6ecd0",
+      "source_job": "B42"
+    },
+    "CTRL43": {
+      "arm": "CTRL",
+      "seed": 43,
+      "time_resolved": null,
+      "lambda_key": null,
+      "ex_name": "radaz_e8_B_CTRL_seed43_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_CTRL_seed43_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed43_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "2fdabd11ad1083e094ea4fedec6a5c1bb99a0ea364c3387422b4d1c520731834",
+      "source_job": "B43"
+    },
+    "XT43": {
+      "arm": "XT",
+      "seed": 43,
+      "time_resolved": true,
+      "lambda_key": "lambda_xt",
+      "ex_name": "radaz_e8_B_XT_seed43_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_XT_seed43_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed43_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "2fdabd11ad1083e094ea4fedec6a5c1bb99a0ea364c3387422b4d1c520731834",
+      "source_job": "B43"
+    },
+    "XA43": {
+      "arm": "XA",
+      "seed": 43,
+      "time_resolved": false,
+      "lambda_key": "lambda_xa",
+      "ex_name": "radaz_e8_B_XA_seed43_10ep_20260927",
+      "config": "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py",
+      "checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_e8_B_XA_seed43_10ep_20260927\\checkpoints\\last.ckpt",
+      "source_checkpoint": "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_bc_Donly_B_GN_seed43_60ep_20260912\\checkpoints\\last.ckpt",
+      "source_checkpoint_sha256": "2fdabd11ad1083e094ea4fedec6a5c1bb99a0ea364c3387422b4d1c520731834",
+      "source_job": "B43"
+    }
+  },
+  "training_order": [
+    "CTRL42",
+    "XT42",
+    "XA42",
+    "CTRL43",
+    "XT43",
+    "XA43"
+  ],
+  "assets_sha256": {
+    "C:\\Users\\astro\\research\\SimVPv2\\configs\\custom\\pepapic\\SimVP_gSTA_radaz_e8_B_10ep.py": "f3bcbc898f17df881e5104acc6935fa97f7aacac3c7805a59253f4e8da8081ee",
+    "C:\\Users\\astro\\research\\SimVPv2\\openstl\\methods\\pepapic_spectral_loss_e8.py": "09124566ea701fb29dcce62e85bac1b5a9abd3da8740a7d2ce6b451f3eebfb98",
+    "C:\\Users\\astro\\research\\SimVPv2\\radaz_e8_experiment.py": "f27d63307a6140add8d153e9590be7a8299cc9c5de0c7b0da4c7101738037453",
+    "C:\\Users\\astro\\research\\SimVPv2\\train_radaz_e8.py": "8c1dfd1eea6a8ad29ebf947b594f1607bcd663bca19e0fe014109b6176d0503e",
+    "C:\\Users\\astro\\research\\SimVPv2\\calibrate_radaz_e8.py": "f7eefc91546e1be07818fbb1ddf87feef428c519aac9052b41aa997e2d00c0e4",
+    "C:\\Users\\astro\\research\\SimVPv2\\evaluate_radaz_e8.py": "e06fecb3aa57073da40b6e3e855ea045c88ca1e547915e3dba75ff40f664c56c",
+    "C:\\Users\\astro\\research\\SimVPv2\\run_radaz_e8.py": "347f0bff5a761ba75a882fcc12e2b094864add2df35931b3008677ecf759e2c2",
+    "C:\\Users\\astro\\research\\SimVPv2\\tests\\test_radaz_e8.py": "1dea73f4a4f3c124ee822ce56a7bd2c09d2de565839b5b1478c84945dc00ebb3",
+    "C:\\Users\\astro\\research\\SimVPv2\\protocols\\radaz_e8_20260927\\PROTOCOL.md": "5edffd44fd68728e882e6c547721c8ee50d58f8c732253017fc59860b004f9ef",
+    "C:\\Users\\astro\\research\\SimVPv2\\protocols\\radaz_e8_20260927\\calibration.json": "afe1a754e7b66bcff537d7d31200c4c74e99c06c1aafebced2e55d394af48085",
+    "C:\\Users\\astro\\research\\SimVPv2\\workdirs\\2D_RadAz\\radaz_paired_pilot_v2\\source_manifest.json": "e0ff1fbe5eef41df6a151a52172192d864c76b501e135f530e9dcb61dbd4f415"
+  },
+  "primary": "source_test: mean over seeds of median over six conditions of CTRL_minus_XT on time-resolved signed O RMSE; positive favours XT",
+  "limitations": [
+    "Already inspected source cases, one PIC realization per condition; exploratory",
+    "Continuation from B terminal weights with a fresh optimizer; both arms share this discontinuity",
+    "Same data order and update count across arms; GPU non-determinism remains (two seeds)",
+    "lambda calibrated on TRAIN windows with the starting models; not tuned on any evaluation split",
+    "No confidence intervals, significance claims, or thresholds",
+    "Local git commit is versioning, not an independent external timestamp; no remote push"
+  ]
+}

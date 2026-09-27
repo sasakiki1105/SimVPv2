@@ -1,0 +1,51 @@
+# E8 matched continuation from the frozen B terminal checkpoints (2026-09-27).
+# Identical to SimVP_gSTA_radaz_bc_Donly_B_60ep.py except: 10 epochs, constant
+# LR 1e-4 (step scheduler with decay beyond the run, no warmup), a snapshot at
+# completed epoch 5 (completed 10 is last.ckpt), and cross-loss mode range n=1..32.  The spectral
+# loss module itself is injected by train_radaz_e8.py per arm; the config keeps
+# pepapic_spectral_loss='none' so the control arm is exactly field MSE.
+method = 'SimVP'
+model_type = 'gSTA'
+hid_T = 256
+N_T = 4
+N_S = 4
+spatio_kernel_enc = 3
+spatio_kernel_dec = 3
+simvp_direct_aft_seq = True
+out_channels = 3
+condition_dim = 2
+condition_film = False
+condition_hidden_dim = 64
+translator_norm = 'group'
+translator_norm_groups = 8
+lr = 0.0001
+batch_size = 1
+drop_path = 0
+drop_path_schedule = 'zero_to_max'
+sched = 'step'
+decay_epoch = 100
+decay_rate = 0.1
+epoch = 10
+pre_seq_length = 10
+aft_seq_length = 10
+in_shape = None
+pepapic_condition_channels = 'log_vE,log_n0'
+pepapic_spectral_loss = 'none'
+pepapic_spectral_coordinate_system = 'integer_power_cross'
+pepapic_spectral_radial_reduction = 'local_product'
+pepapic_spectral_max_mode = 32
+pepapic_spectral_radial_bands = 4
+pepapic_spectral_radial_min_m = 0.0009
+pepapic_spectral_radial_max_m = 0.0119
+pepapic_spectral_power_eps_relative = 1e-08
+pepapic_spectral_cross_mask_kappa = 0.001
+pepapic_spectral_power_lambda = 0.0
+pepapic_spectral_crossspec_lambda = 0.0
+pepapic_spectral_complex_lambda = 0.0
+pepapic_transport_lambda = 0.0
+radaz_validation_diagnostics = True
+metrics = ['mse', 'mae']
+snapshot_epochs = '5'
+snapshot_epoch_numbering = 'completed'
+spatio_azimuth_downsample = 2
+hid_S = 64
