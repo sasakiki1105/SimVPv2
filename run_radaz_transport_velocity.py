@@ -159,6 +159,7 @@ def train_job(folder,arm,seed,device,preloaded=None):
                       generator=torch.Generator().manual_seed(2000003+seed))
     validation=DataLoader(val,batch_size=1,shuffle=False,num_workers=0)
     epochs=contract['training']['epochs']; weight=contract['training']['gamma_weight']
+    velocity_weight=contract['training'].get('velocity_weight',1/3)
     scheduler=torch.optim.lr_scheduler.OneCycleLR(optimizer,max_lr=contract['training']['lr'],
         total_steps=len(loader)*epochs,pct_start=contract['training']['pct_start'])
     first=global_step=0
@@ -177,7 +178,7 @@ def train_job(folder,arm,seed,device,preloaded=None):
         model.train(); sampler.epoch=epoch
         start=time.monotonic(); sums={k:0. for k in ('total','field','gamma','velocity')}
         for i,(x,y) in enumerate(loader):
-            parts=v2.checked_step(model,optimizer,x.to(device),y.to(device),weight)
+            parts=v2.checked_step(model,optimizer,x.to(device),y.to(device),weight,velocity_weight)
             scheduler.step(); global_step+=1
             for key,value in parts.items():
                 sums[key]+=value
@@ -190,7 +191,7 @@ def train_job(folder,arm,seed,device,preloaded=None):
         model.eval(); vsums={k:0. for k in sums}
         with torch.no_grad():
             for x,y in validation:
-                parts=v2.loss_parts(model(x.to(device)),y.to(device),weight)
+                parts=v2.loss_parts(model(x.to(device)),y.to(device),weight,velocity_weight)
                 for key,value in parts.items():
                     vsums[key]+=float(value)
         save_checkpoint(path/'last.pt',dict(kind='transport_five_field_training',identity=identity,
@@ -286,8 +287,13 @@ def evaluate(folder,arm,seed,split,device,transfer_manifest=None):
             mean_diagnostics={k:np.mean([r[k] for r in measures],axis=0).tolist() for k in measures[0]},
             archive=str(archive),archive_sha256=old.digest(archive))
         print('EVALUATED',arm,case['case_key'],flush=True)
+    aggregate={route:{null:float(np.median([row['transport'][route][null]['skill']
+        for row in rows.values() if row['transport'][route][null]['skill'] is not None]))
+        for null in next(iter(rows.values()))['transport'][route]}
+        for route in next(iter(rows.values()))['transport']}
     old.atomic_json(destination,dict(**identity,created_utc=now(),split=split,frame_range=[start,stop],
         primary='derived_full' if arm=='none' else 'direct_full',per_condition=rows,
+        condition_equal_weight_median_skill=aggregate,
         transfer_manifest_sha256=old.digest(transfer_manifest) if transfer_manifest else None,
         transfer_metadata=[{k:c.get(k) for k in ('case_key','exposure','transfer_kind')} for c in cases],
         caveat='Exploratory. Direct gamma gives full flux only; T10 is field-derived.'))
@@ -335,9 +341,18 @@ def main():
             print('RUNNER',old.read_json(args.out/'runner.json'))
         statuses=sorted((args.out/'jobs').glob('*/status.json'))
         for p in statuses:
-            print(p.parent.name,old.read_json(p))
+            row=old.read_json(p)
+            if row['status']=='training':
+                steps=row['steps_per_epoch']; epochs=row['epochs']
+                percent=100*row['global_step']/(steps*epochs)
+                remaining=(steps*epochs-row['global_step'])*row['mean_step_seconds']/3600
+                print(f"{p.parent.name}: epoch {row['epoch']}/{epochs}, step {row['step']}/{steps}, "
+                      f"{percent:.2f}%, ETA {remaining:.1f} h (training only, early estimate)")
+                print('  loss',row['loss'],'updated',row['updated_utc'])
+            else:
+                print(p.parent.name,row)
         if not statuses:
-            print('No long training started. Five-output bundle prepared:',(args.out/'bundle.json').exists())
+            print('No optimizer step recorded yet. Five-output bundle prepared:',(args.out/'bundle.json').exists())
         return
     with exclusive(args.out/'execution.lock'):
         if args.action=='prepare':
