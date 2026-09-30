@@ -152,6 +152,8 @@ def code_hashes():
 
 def transition_check(amend,device):
     """Read-only optimizer comparison, guarded by the original execution lock."""
+    if device.type=='cuda' and not torch.are_deterministic_algorithms_enabled():
+        raise RuntimeError('Use the check CLI: this equality diagnostic requires deterministic GPU kernels')
     amend=Path(amend)
     if (amend/'transition.json').exists():
         raise RuntimeError('Transition already audited; preserve it')
@@ -227,7 +229,12 @@ def transition_check(amend,device):
         global_step=checkpoint['global_step'],device=str(device),torch=torch.__version__,
         compared_updates=3,samples=descriptions,losses=losses,
         input_target_bits_equal=True,model_optimizer_scheduler_rng_bits_equal=True,
-        original_checkpoint_unchanged=True,code_sha256=code_hashes()))
+        original_checkpoint_unchanged=True,code_sha256=code_hashes(),
+        deterministic_diagnostic_only=True,production_gpu_settings_unchanged=True,
+        gpu_verification_settings=dict(deterministic_algorithms=torch.are_deterministic_algorithms_enabled(),
+            cudnn_deterministic=torch.backends.cudnn.deterministic,
+            cudnn_benchmark=torch.backends.cudnn.benchmark,
+            cublas_workspace_config=os.environ.get('CUBLAS_WORKSPACE_CONFIG'))))
     print('TRANSITION PASSED: identical input, target, 3 Adam updates, scheduler and RNG',flush=True)
 
 
@@ -275,6 +282,12 @@ def main():
             raise RuntimeError('CUDA unavailable')
         device=torch.device('cuda')
         if args.action=='check':
+            # Isolated diagnostic process only. The production train branch keeps
+            # the legacy GPU settings, which do not guarantee bit reproducibility.
+            os.environ['CUBLAS_WORKSPACE_CONFIG']=':4096:8'
+            torch.backends.cudnn.benchmark=False
+            torch.backends.cudnn.deterministic=True
+            torch.use_deterministic_algorithms(True)
             transition_check(args.amend,device); return
         contract,amendment=verify_amendment(args.amend)
         if (v2.OUT/'PAUSE_AFTER_EPOCH').exists():

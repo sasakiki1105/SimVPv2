@@ -77,3 +77,21 @@ python run_radaz_transport_velocity.py status
 cached runner. No scientific evaluation is automatically launched after training.
 Timing during cache construction shares the machine with training; observed
 post-resume step/epoch times, rather than that microbenchmark, determine speedup.
+
+## 10:17 JST diagnostic clarification, before runtime sealing
+
+The initial GPU bitwise-update gate failed under the legacy default GPU settings.
+A control repeated the legacy route itself from identical model/Adam/RNG states:
+after three updates the maximum parameter difference was 7.78e-5, versus 4.66e-5
+for legacy versus cached. The first forward losses were exactly equal; differences
+appeared after backward/update. These numbers are diagnostics, not a newly chosen
+acceptance tolerance. See `gpu_nondeterminism_diagnostic.json`.
+
+Therefore the strict GPU equality check now runs in its own process with
+deterministic algorithms, deterministic cuDNN and CUBLAS_WORKSPACE_CONFIG=:4096:8.
+It still requires bit-identical inputs and model/optimizer/scheduler/RNG after
+three updates. The production training branch keeps all original GPU settings.
+We do not claim a bit-identical eventual GPU trajectory to an uninterrupted old
+run: even repeated old runs fail that claim. Cached input/target bits and saved
+optimizer/RNG restoration remain exact. No scientific endpoint or model choice
+has been changed in response to this engineering diagnostic.
